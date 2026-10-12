@@ -38,6 +38,7 @@ struct ClipboardTests {
         fileKindClassification()
         importedFilesArriveOncePerPath()
         defaultActionChords()
+        layoutEnum()
         plainTextSkipsTheFile()
         offersTextExtraction()
 
@@ -873,6 +874,16 @@ struct ClipboardTests {
             expect(imageActions.first == paste, "\(defaultAction) on an image never pastes plain")
             expect(imageActions.last == .some(nil), "and ⌃⌘↵ has nothing to run on it")
         }
+    }
+
+    /// The enum's title is readable, and its rawValue is the persisted handle (not the UI copy).
+    static func layoutEnum() {
+        expect(ClipboardHistoryLayout.allCases == [.list, .cards], "enum exposes list then cards")
+        expect(ClipboardHistoryLayout.list.rawValue == "list", "list spells its raw value")
+        expect(ClipboardHistoryLayout.cards.rawValue == "cards", "cards spells its raw value")
+        expect(!ClipboardHistoryLayout.list.title.isEmpty, "list has a title")
+        expect(!ClipboardHistoryLayout.cards.title.isEmpty, "cards has a title")
+        expect(ClipboardHistoryLayout(rawValue: "nonsense") == nil, "unknown raw value is rejected")
     }
 
     static func plainTextSkipsTheFile() {

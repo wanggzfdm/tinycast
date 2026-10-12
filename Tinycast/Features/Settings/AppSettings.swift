@@ -157,6 +157,14 @@ final class AppSettings {
         }
     }
 
+    /// List is the classic split list; Cards is the horizontal Clipaste-style row.
+    var clipboardHistoryLayout: ClipboardHistoryLayout {
+        didSet {
+            defaults.set(
+                clipboardHistoryLayout.rawValue, forKey: Key.clipboardHistoryLayout.rawValue)
+        }
+    }
+
     var launchAtLogin: Bool {
         didSet { LaunchAtLogin.set(launchAtLogin) }
     }
@@ -684,6 +692,9 @@ final class AppSettings {
         clipboardDefaultAction =
             defaults.string(forKey: Key.clipboardDefaultAction.rawValue)
             .flatMap(ClipboardDefaultAction.init) ?? .paste
+        clipboardHistoryLayout =
+            defaults.string(forKey: Key.clipboardHistoryLayout.rawValue)
+            .flatMap(ClipboardHistoryLayout.init) ?? .list
         launchAtLogin = LaunchAtLogin.isEnabled
         showInMenuBar =
             defaults.object(forKey: Key.showInMenuBar.rawValue) == nil

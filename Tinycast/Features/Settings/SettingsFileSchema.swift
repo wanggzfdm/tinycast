@@ -136,6 +136,7 @@ enum SettingsFileSchema {
         case .clipboardRetention: return bind(settings, \.clipboardRetention)
         case .clipboardDefaultAction: return bind(settings, \.clipboardDefaultAction)
         case .clipboardDisabledApps: return bind(settings, \.clipboardDisabledApps)
+        case .clipboardHistoryLayout: return bind(settings, \.clipboardHistoryLayout)
         case .clipboardCommands: return launcher.commandsBinding(for: key, owner: .clipboard)
         case .emojiSkinTone: return bind(settings, \.emojiSkinTone)
         case .emojiGridColumns: return bind(settings, \.emojiGridColumns)
@@ -175,6 +176,7 @@ extension CalcNumberStyle: SettingsFileRawValue {}
 extension SearchSensitivity: SettingsFileRawValue {}
 extension WindowCycle: SettingsFileRawValue {}
 extension ClipboardDefaultAction: SettingsFileRawValue {}
+extension ClipboardHistoryLayout: SettingsFileRawValue {}
 extension EmojiSkinTone: SettingsFileRawValue {}
 extension EmojiGridColumns: SettingsFileRawValue {}
 extension DictationModel: SettingsFileRawValue {}
