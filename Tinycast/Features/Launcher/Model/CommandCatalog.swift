@@ -32,6 +32,31 @@ enum CommandCatalog {
         return makeEntry(.openInBrowser, url: url, subtitle: String(localized: "URL"))
     }
 
+    static func contentMatches(for query: String) -> [AppEntry] {
+        let path = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !path.isEmpty, FileManager.default.fileExists(atPath: path) {
+            var matches: [AppEntry] = []
+            if let terminal = openInTerminal(for: path) { matches.append(terminal) }
+            if let finder = revealInFinder(for: path) { matches.append(finder) }
+            return matches
+        }
+        if let json = jsonFormatter(for: query) { return [json] }
+        return []
+    }
+
+    private static func openInTerminal(for path: String) -> AppEntry? {
+        makeEntry(.openInTerminal, url: URL(fileURLWithPath: path), subtitle: path)
+    }
+
+    private static func revealInFinder(for path: String) -> AppEntry? {
+        makeEntry(.revealInFinder, url: URL(fileURLWithPath: path), subtitle: path)
+    }
+
+    private static func jsonFormatter(for query: String) -> AppEntry? {
+        guard JSONTool.isValid(query) else { return nil }
+        return makeEntry(.jsonFormatter, subtitle: "JSON")
+    }
+
     /// A command's row, built rather than looked up — `all` holds none of the query-driven ones.
     nonisolated static func makeEntry(
         _ id: CommandID, url: URL? = nil, subtitle: String? = nil

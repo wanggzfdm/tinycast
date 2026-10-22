@@ -165,6 +165,11 @@ final class AppSettings {
         }
     }
 
+    /// Fill the launcher's search field with a freshly copied text, once, like utools.
+    var clipboardAutoFillLauncher: Bool {
+        didSet { defaults.set(clipboardAutoFillLauncher, forKey: Key.clipboardAutoFillLauncher.rawValue) }
+    }
+
     var launchAtLogin: Bool {
         didSet { LaunchAtLogin.set(launchAtLogin) }
     }
@@ -695,6 +700,9 @@ final class AppSettings {
         clipboardHistoryLayout =
             defaults.string(forKey: Key.clipboardHistoryLayout.rawValue)
             .flatMap(ClipboardHistoryLayout.init) ?? .list
+        clipboardAutoFillLauncher =
+            defaults.object(forKey: Key.clipboardAutoFillLauncher.rawValue) == nil
+            || defaults.bool(forKey: Key.clipboardAutoFillLauncher.rawValue)
         launchAtLogin = LaunchAtLogin.isEnabled
         showInMenuBar =
             defaults.object(forKey: Key.showInMenuBar.rawValue) == nil

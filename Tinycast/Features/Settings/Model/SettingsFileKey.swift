@@ -99,6 +99,7 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     case clipboardDisabledApps = "clipboard.disabledApps"
     case clipboardHistoryLayout = "clipboard.historyLayout"
     case clipboardCommands = "clipboard.commands"
+    case clipboardAutoFillLauncher = "clipboard.autoFillLauncher"
     case emojiSkinTone = "emoji.skinTone"
     case emojiGridColumns = "emoji.gridColumns"
     case emojiCommands = "emoji.commands"

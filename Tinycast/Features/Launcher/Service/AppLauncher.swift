@@ -13,6 +13,22 @@ enum AppLauncher {
     static func open(_ url: URL) {
         NSWorkspace.shared.open(url)
     }
+    @MainActor
+    static func openInTerminal(_ path: String) {
+        let source = """
+            tell application "Terminal"
+                activate
+                do script "cd \(shellQuoted(path))"
+            end tell
+            """
+        var errorInfo: NSDictionary?
+        NSAppleScript(source: source)?.executeAndReturnError(&errorInfo)
+    }
+
+    private static func shellQuoted(_ value: String) -> String {
+        "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
 
     @MainActor
     static func showInFinder(_ url: URL) {

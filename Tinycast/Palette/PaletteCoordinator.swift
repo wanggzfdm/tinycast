@@ -10,6 +10,8 @@ final class PaletteCoordinator {
     private let menuSearch: MenuSearchSession
     private let windowSwitch: WindowSwitchSession
     private let windowController: PaletteWindowController
+    @ObservationIgnored private var autofillPolicy: ClipboardAutofillPolicy
+    @ObservationIgnored private var autofillTimer: Timer?
     /// Features whose launcher rows are read from outside Tinycast re-read them on each open.
     var onLauncherShown: (() -> Void)?
     /// Screens that snapshot other apps re-read them on every open, a restored one included.
@@ -31,6 +33,14 @@ final class PaletteCoordinator {
         self.menuSearch = menuSearch
         self.windowSwitch = windowSwitch
         self.windowController = windowController
+        autofillPolicy = ClipboardAutofillPolicy(lastConsumedChangeCount: NSPasteboard.general.changeCount)
+        autofillTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.observePasteboardChange() }
+        }
+    }
+
+    isolated deinit {
+        autofillTimer?.invalidate()
     }
 
     // MARK: - Palette control
@@ -104,6 +114,13 @@ final class PaletteCoordinator {
         if palette.mode == .launcher {
             Task { await appIndex.refresh() }
             onLauncherShown?()
+            if query == nil, settings.clipboardAutoFillLauncher {
+                switch autofillVerdict {
+                case .filled(let text): palette.query = text
+                case .waiting: retryAutofill()
+                case .missed: break
+                }
+            }
         }
     }
 
@@ -156,5 +173,39 @@ final class PaletteCoordinator {
 
     func endPaletteDrag() {
         windowController.endDrag()
+    }
+
+    // MARK: - Clipboard autofill
+
+    private func observePasteboardChange() {
+        autofillPolicy.observe(changeCount: NSPasteboard.general.changeCount, at: .now)
+    }
+
+    private var autofillVerdict: ClipboardAutofillPolicy.Verdict {
+        let pasteboard = NSPasteboard.general
+        let count = pasteboard.changeCount
+        return autofillPolicy.consume(
+            changeCount: count,
+            text: pasteboard.string(forType: .string),
+            at: .now
+        )
+    }
+
+    /// A fresh copy the poll hasn't recorded yet: retry briefly rather than drop it.
+    private func retryAutofill() {
+        Task { @MainActor in
+            let deadline = Date().addingTimeInterval(ClipboardAutofillPolicy.retryWindow)
+            while Date() < deadline {
+                try? await Task.sleep(for: .milliseconds(
+                    Int(ClipboardAutofillPolicy.retryInterval * 1000)
+                ))
+                guard palette.query.isEmpty, windowController.isVisible else { return }
+                if case .filled(let text) = autofillVerdict {
+                    palette.query = text
+                    return
+                }
+                if case .missed = autofillVerdict { return }
+            }
+        }
     }
 }

@@ -81,6 +81,21 @@ final class LauncherCoordinator {
                 AppLauncher.open(app.url)
                 return
             }
+            if id == .openInTerminal {
+                paletteCoordinator.hidePalette(restoreFocus: false)
+                AppLauncher.openInTerminal(app.url.path)
+                return
+            }
+            if id == .revealInFinder {
+                paletteCoordinator.hidePalette(restoreFocus: false)
+                AppLauncher.showInFinder(app.url)
+                return
+            }
+            if id == .jsonFormatter {
+                paletteCoordinator.hidePalette(restoreFocus: false)
+                core.jsonToolCoordinator.show(text: searchQuery ?? "")
+                return
+            }
             runCommand(id)
             return
         }
@@ -199,7 +214,7 @@ final class LauncherCoordinator {
             Task { await core.cameraCoordinator.show() }
         case .define:
             core.dictionaryCoordinator.show()
-        case .openInBrowser, .runShellCommand:
+        case .openInBrowser, .runShellCommand, .openInTerminal, .revealInFinder, .jsonFormatter:
             break  // Query-driven: each runs where the typed text is, never through this funnel.
         case .joinNextMeeting:
             calendarCoordinator.joinNextMeeting()

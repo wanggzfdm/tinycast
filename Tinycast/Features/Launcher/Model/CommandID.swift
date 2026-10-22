@@ -18,6 +18,9 @@ enum CommandID: String, CaseIterable, Sendable {
     case switchWindowsBackwards = "command:switch-windows-backwards"
     case openCamera = "command:open-camera"
     case openInBrowser = "command:open-in-browser"
+    case openInTerminal = "command:open-in-terminal"
+    case revealInFinder = "command:reveal-in-finder"
+    case jsonFormatter = "command:json-formatter"
     case runShellCommand = "command:run-shell-command"
     case createCustomCommand = "command:create-custom-command"
     case searchCustomCommands = "command:search-custom-commands"
@@ -71,6 +74,9 @@ enum CommandID: String, CaseIterable, Sendable {
         case .switchWindowsBackwards: return "Switch Windows Backwards"
         case .openCamera: return "Open Camera"
         case .openInBrowser: return "Open in Browser"
+        case .openInTerminal: return "Open in Terminal"
+        case .revealInFinder: return "Reveal in Finder"
+        case .jsonFormatter: return "Open in JSON Tool"
         case .runShellCommand: return "Run Shell Command"
         case .createCustomCommand: return "Create Custom Command"
         case .searchCustomCommands: return "Search Custom Commands"
@@ -121,6 +127,9 @@ enum CommandID: String, CaseIterable, Sendable {
         case .switchWindows, .switchWindowsBackwards: return "macwindow.on.rectangle"
         case .openCamera: return "camera"
         case .openInBrowser: return "globe"
+        case .openInTerminal: return "terminal"
+        case .revealInFinder: return "folder"
+        case .jsonFormatter: return "curlybraces"
         case .runShellCommand: return "terminal"
         case .createCustomCommand: return "terminal"
         case .searchCustomCommands: return "terminal"
@@ -197,7 +206,7 @@ enum CommandID: String, CaseIterable, Sendable {
 
     /// Query-driven: the typed text is their input, so they are built where offered, never listed.
     var isQueryDriven: Bool {
-        self == .openInBrowser || self == .runShellCommand
+        self == .openInBrowser || self == .runShellCommand || self == .openInTerminal || self == .revealInFinder || self == .jsonFormatter
     }
 
     /// A chord carries no query, and none should be able to terminate the app outright.

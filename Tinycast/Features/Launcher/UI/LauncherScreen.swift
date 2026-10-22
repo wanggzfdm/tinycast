@@ -70,6 +70,13 @@ struct LauncherScreen: PaletteScreen {
             results.insert(browser, at: 0)
             matchCount += 1
         }
+        if pinned == nil {
+            let content = CommandCatalog.contentMatches(for: vm.query)
+            for entry in content where visibility.isVisible(entry) {
+                results.insert(entry, at: 0)
+                matchCount += 1
+            }
+        }
         // No card over a pinned row: its fields hang off the selection, which must start on it.
         let calc =
             pinned == nil

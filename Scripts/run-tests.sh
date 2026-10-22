@@ -146,6 +146,7 @@ run launcher-file-test     $L/LauncherFileFormat.swift \
                            Tinycast/Features/Settings/Model/SettingsFileJSON.swift
 run launcher-settings-file-test \
                            $L/LauncherFileFormat.swift $L/CommandID.swift $L/CommandCatalog.swift \
+                           Tinycast/Features/JSON/Model/JSONTool.swift \
                            Tinycast/Features/Launcher/Service/LauncherSettingsFile.swift \
                            Tinycast/Features/Launcher/Service/AliasStore.swift \
                            Tinycast/Features/Launcher/Service/VisibilityStore.swift \
@@ -170,6 +171,7 @@ run launcher-settings-file-test \
 run apple-shortcut-test    Tinycast/Features/AppleShortcuts/Model/*.swift
 run calc-test              Tinycast/Features/Calculator/Model/*.swift
 run index calc-performance Tinycast/Features/Calculator/Model/*.swift
+run json-tool-test         Tinycast/Features/JSON/Model/JSONTool.swift
 run calendar-test          Tinycast/Features/Calendar/Model/*.swift \
                            Tinycast/Features/Calendar/UI/EventEditorSession.swift
 run clipboard-test         Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
@@ -189,6 +191,7 @@ run clipboard-coordinator-test Tinycast/Features/Clipboard/UI/ClipboardCoordinat
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
                            Tinycast/Features/CustomCommands/Model/CustomCommand.swift
+run palette-autofill-test Tinycast/Palette/ClipboardAutofillPolicy.swift
 run clipboard-thumbnail-test Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \

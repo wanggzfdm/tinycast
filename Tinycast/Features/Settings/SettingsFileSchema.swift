@@ -155,6 +155,7 @@ enum SettingsFileSchema {
         case .hideCurrentEvent: return bind(settings, \.hideCurrentEvent)
         case .calendarCommands: return launcher.commandsBinding(for: key, owner: .calendar)
         case .extensionsShowInLauncher: return bind(settings, \.extensionsShowInLauncher)
+        case .clipboardAutoFillLauncher: return bind(settings, \.clipboardAutoFillLauncher)
         }
     }
 

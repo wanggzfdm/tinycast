@@ -24,6 +24,7 @@ struct SettingsBackup: Codable {
         var clipboardRetentionDays: Int?
         var clipboardDefaultAction: String?
         var clipboardHistoryLayout: String?
+        var clipboardAutoFillLauncher: Bool?
         var clipboardDisabledApps: [String]?
         var launchAtLogin: Bool?
         var hyperKey: String?
@@ -139,6 +140,7 @@ extension SettingsBackup {
             clipboardRetentionDays: s.clipboardRetention.rawValue,
             clipboardDefaultAction: s.clipboardDefaultAction.rawValue,
             clipboardHistoryLayout: s.clipboardHistoryLayout.rawValue,
+            clipboardAutoFillLauncher: s.clipboardAutoFillLauncher,
             clipboardDisabledApps: s.clipboardDisabledApps,
             launchAtLogin: s.launchAtLogin,
             hyperKey: s.hyperKey.rawValue,
@@ -311,6 +313,10 @@ extension SettingsBackup {
         var count = 0
         if let flag = s.clipboardEnabled {
             settings.clipboardEnabled = flag
+            count += 1
+        }
+        if let flag = s.clipboardAutoFillLauncher {
+            settings.clipboardAutoFillLauncher = flag
             count += 1
         }
         if let days = s.clipboardRetentionDays, let retention = ClipboardRetention(rawValue: days) {

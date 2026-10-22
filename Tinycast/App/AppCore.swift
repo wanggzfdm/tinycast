@@ -215,6 +215,7 @@ final class AppCore {
         settings: settings, appIndex: appIndex, session: windowSwitch, palette: palette,
         paletteCoordinator: paletteCoordinator, core: self)
     @ObservationIgnored private(set) lazy var cameraCoordinator = CameraCoordinator(core: self)
+    @ObservationIgnored private(set) lazy var jsonToolCoordinator = JSONToolCoordinator(core: self)
     @ObservationIgnored private(set) lazy var dictionaryCoordinator = DictionaryCoordinator(
         paletteCoordinator: paletteCoordinator)
     @ObservationIgnored private(set) lazy var updateCoordinator = UpdateCoordinator(
@@ -470,6 +471,7 @@ final class AppCore {
         if updateCoordinator.focusExisting() { return }
         if supportCoordinator.focusExisting() { return }
         if customCommandCoordinator.focusOutputWindow() { return }
+        if jsonToolCoordinator.focusExisting() { return }
         paletteCoordinator.showPalette(mode: .launcher, restoreAnyMode: true)
     }
 
