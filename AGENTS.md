@@ -61,6 +61,13 @@ system-wide chord, and HIToolbox's TIS APIs remain the public input-source mecha
 Never break these without an explicit task to do so. Anything feature-specific lives in that
 feature's doc, under its own `## Invariants`.
 
+- **Software update is removed from this fork.** The `checkForUpdates` command, the "Check for
+  Updates…" menu/About entries, the `automaticallyCheckForUpdates` setting, and the automatic update
+  prompt path are all deleted. `UpdateCoordinator`'s `applyEnabled`/`applyAutomaticChecking`/
+  `presentIfAvailable` are kept as no-ops only so the module compiles. **Do not restore any of these**
+  unless an explicit task asks for it — re-adding the command, the setting, the menu entries, or
+  wiring the automatic check back into `AppCore.start()` is out of scope for every other change.
+
 - **`AppCore` is the sole owner.** New long-lived state goes on `AppCore`, wired in `start()` — never a
   competing singleton. Views reach a feature's **coordinator** through `@Environment`, not `AppCore`.
 - **A file under `Features/*/Model/` may not import AppKit or SwiftUI**, and takes every environment
