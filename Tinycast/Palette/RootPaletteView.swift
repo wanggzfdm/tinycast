@@ -902,6 +902,15 @@ struct RootPaletteView: View {
                 // A hidden field takes no caret, so it claims no I-beam region either.
                 vm.searchFieldFrame = hidesSearchField ? .zero : $0
             }
+            .modifier(
+                PasteToChipInterceptor(
+                    state: { (vm.query, vm.isComposing) },
+                    ownsWindow: { $0 === hostWindow },
+                    adopt: { text in
+                        vm.pastedText = text
+                        searchFocused = true
+                    })
+            )
     }
 
     /// The Uninstall screen's primary action is destructive, so its pill isn't white.
@@ -1561,6 +1570,49 @@ private struct HeaderBackButton: View {
         .onHover { hovered = $0 }
         .animation(.easeOut(duration: Theme.Duration.hover), value: hovered)
         .help(help)
+    }
+}
+
+/// ⌘V into the empty search field lands on a placeholder chip instead of typed text, like ZTools.
+/// A local monitor, not a gesture: the field editor paste command would otherwise win the event.
+private struct PasteToChipInterceptor: ViewModifier {
+    /// Fresh reads, not captured values: the ViewModifier struct is rebuilt every render.
+    let state: () -> (query: String, isComposing: Bool)
+    let ownsWindow: (NSWindow?) -> Bool
+    let adopt: (String) -> Void
+
+    @State private var monitor: Any?
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                guard monitor == nil else { return }
+                monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
+                    interceptPaste(event)
+                }
+            }
+            .onDisappear {
+                if let monitor { NSEvent.removeMonitor(monitor) }
+                monitor = nil
+            }
+    }
+
+    private func interceptPaste(_ event: NSEvent) -> NSEvent? {
+        let modifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        guard modifiers == .command,
+            event.charactersIgnoringModifiers?.lowercased() == "v",
+            // Only our own window's field: settings and extension forms paste normally.
+            ownsWindow(event.window),
+            let editor = event.window?.firstResponder as? NSTextView, editor.isFieldEditor
+        else { return event }
+        let (query, isComposing) = state()
+        // Text being typed or composed stays a normal paste; an empty field becomes a chip.
+        guard query.isEmpty, !isComposing,
+            let text = NSPasteboard.general.string(forType: .string),
+            !text.isEmpty
+        else { return event }
+        adopt(text)
+        return nil
     }
 }
 
