@@ -862,8 +862,18 @@ struct RootPaletteView: View {
             // Fills the row's height, so there's no gap above it for topDragStrip to meet.
             .frame(maxHeight: .infinity)
             .background(alignment: .leading) {
-                // An IME's marked text leaves `query` empty, so the placeholder would overlap it.
-                if vm.query.isEmpty, !vm.isComposing {
+                if let pasted = vm.pastedText, vm.query.isEmpty, !vm.isComposing {
+                    PastedTextChip(text: pasted) {
+                        // Clicking the chip adopts the copy as typed text, like ZTools.
+                        vm.rewriteQuery(pasted)
+                        vm.pastedText = nil
+                        searchFocused = true
+                    } onDismiss: {
+                        vm.pastedText = nil
+                    }
+                    .allowsHitTesting(true)
+                } else if vm.query.isEmpty, !vm.isComposing {
+                    // An IME's marked text leaves `query` empty, so the placeholder would overlap it.
                     Text(searchPrompt)
                         .font(metrics.typography.searchField)
                         .foregroundStyle(Theme.Colors.textTertiary)
@@ -1551,5 +1561,48 @@ private struct HeaderBackButton: View {
         .onHover { hovered = $0 }
         .animation(.easeOut(duration: Theme.Duration.hover), value: hovered)
         .help(help)
+    }
+}
+
+/// A clipboard copy waiting as a placeholder chip inside the search field: shown instead of
+/// the prompt, clicked to adopt the text as typed, with a small dismiss control on hover.
+private struct PastedTextChip: View {
+    let text: String
+    let action: () -> Void
+    let onDismiss: () -> Void
+
+    @State private var hovered = false
+    @Environment(\.metrics) private var metrics
+
+    /// Mid-truncation like ZTools: head and tail with an ellipsis, so a long copy stays readable.
+    private var truncated: String {
+        let maxLength = 30
+        guard text.count > maxLength else { return text }
+        let head = text.prefix(15)
+        let tail = text.suffix(10)
+        return "\(head)...\(tail)"
+    }
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.xs) {
+            Image(systemName: hovered ? "xmark.circle.fill" : "doc.on.clipboard")
+                .font(.system(size: 11))
+                .foregroundStyle(hovered ? Theme.Colors.textTertiary : Theme.Colors.textSecondary)
+                .onTapGesture(perform: onDismiss)
+            Text(truncated)
+                .font(metrics.typography.searchField)
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, Theme.Spacing.sm)
+        .padding(.vertical, 2)
+        .background(Theme.Colors.cardFill, in: RoundedRectangle(cornerRadius: Theme.Radius.attachmentChip))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.attachmentChip)
+                .strokeBorder(Theme.Colors.cardStroke, lineWidth: 1))
+        .contentShape(Rectangle())
+        .onTapGesture(perform: action)
+        .onHover { hovered = $0 }
+        .animation(.easeOut(duration: Theme.Duration.hover), value: hovered)
     }
 }

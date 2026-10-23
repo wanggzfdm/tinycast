@@ -18,6 +18,7 @@ struct LauncherSettingsFileTest {
         testWaitingRecords()
         testDeletedWaitingRecord()
         testMovedShortcut()
+        testContentMatches()
 
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)
@@ -184,6 +185,27 @@ struct LauncherSettingsFileTest {
         AppEntry(
             id: bundleID, name: "Fixture", url: URL(fileURLWithPath: "/fixture"),
             bundleID: bundleID, kind: kind)
+    }
+
+    /// The catalog's query-driven rows: a folder opens Terminal + Finder, a file only Finder.
+    private static func testContentMatches() {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("launcher-catalog-\(UUID().uuidString)")
+        let file = dir.appendingPathComponent("notes.txt")
+        try! FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try! "hello".write(to: file, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let folder = CommandCatalog.contentMatches(for: dir.path)
+        check(
+            "a folder earns terminal + finder rows",
+            folder.map(\.id)
+                == [CommandID.openInTerminal.rawValue, CommandID.revealInFinder.rawValue])
+        let fileRows = CommandCatalog.contentMatches(for: file.path)
+        check("a file earns only the finder row", fileRows.map(\.id) == [CommandID.revealInFinder.rawValue])
+        check("a missing path matches nothing", CommandCatalog.contentMatches(for: "/no/such/path").isEmpty)
+        let json = CommandCatalog.contentMatches(for: #"{"a":1}"#)
+        check("a JSON query still earns the formatter", json.map(\.id) == [CommandID.jsonFormatter.rawValue])
     }
 
     private static func check(_ description: String, _ condition: @autoclosure () -> Bool) {

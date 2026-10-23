@@ -116,7 +116,7 @@ final class PaletteCoordinator {
             onLauncherShown?()
             if query == nil, settings.clipboardAutoFillLauncher {
                 switch autofillVerdict {
-                case .filled(let text): palette.query = text
+                case .filled(let text): palette.pastedText = text
                 case .waiting: retryAutofill()
                 case .missed: break
                 }
@@ -201,7 +201,7 @@ final class PaletteCoordinator {
                 ))
                 guard palette.query.isEmpty, windowController.isVisible else { return }
                 if case .filled(let text) = autofillVerdict {
-                    palette.query = text
+                    palette.pastedText = text
                     return
                 }
                 if case .missed = autofillVerdict { return }

@@ -36,7 +36,12 @@ enum CommandCatalog {
         let path = query.trimmingCharacters(in: .whitespacesAndNewlines)
         if !path.isEmpty, FileManager.default.fileExists(atPath: path) {
             var matches: [AppEntry] = []
-            if let terminal = openInTerminal(for: path) { matches.append(terminal) }
+            var isDirectory: ObjCBool = false
+            FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
+            // A folder earns both a terminal and a Finder row; a file only Finder.
+            if isDirectory.boolValue, let terminal = openInTerminal(for: path) {
+                matches.append(terminal)
+            }
             if let finder = revealInFinder(for: path) { matches.append(finder) }
             return matches
         }
