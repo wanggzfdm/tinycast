@@ -90,6 +90,7 @@ struct JSONToolWindowView: View {
         switch mode {
         case .code:
             JSONSyntaxEditor(text: $text, foldingCommand: foldingCommand)
+                .frame(maxHeight: .infinity)
                 .onChange(of: foldingCommand) { _, _ in
                     Task { @MainActor in foldingCommand = nil }
                 }

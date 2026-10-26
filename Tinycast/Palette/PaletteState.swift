@@ -91,6 +91,7 @@ final class PaletteState {
 
     func prepare(mode: PaletteMode) {
         backStack.removeAll()
+        jsonToolText = ""
         replace(mode: mode)
     }
 
@@ -155,7 +156,6 @@ final class PaletteState {
         menuOpen = false
         menuQuery = ""
         pastedText = nil
-        jsonToolText = ""
         focusToken = UUID()
     }
 
