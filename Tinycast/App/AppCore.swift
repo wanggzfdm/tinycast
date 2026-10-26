@@ -238,7 +238,7 @@ final class AppCore {
         chats: aiChats, settings: settings, palette: palette,
         paletteCoordinator: paletteCoordinator, core: self)
 
-    @ObservationIgnored private lazy var windowController = PaletteWindowController(core: self)
+    @ObservationIgnored lazy var windowController = PaletteWindowController(core: self)
     @ObservationIgnored private lazy var messageHUD = MessageHUDController(settings: settings)
     private(set) var isShowingDialog = false
     var isDimmingPaletteForDialog: Bool { isShowingDialog && windowController.isVisible }

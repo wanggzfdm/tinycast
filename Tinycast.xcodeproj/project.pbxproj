@@ -743,6 +743,7 @@
 		E078243555477EA5F02C9119 /* MenuSearchTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DFF1EF5B5DA85F78C040BD1 /* MenuSearchTarget.swift */; };
 		E0C0746AD3C7E2FED3C50374 /* WindowActionMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1E7B96668721F12170CD72 /* WindowActionMemory.swift */; };
 		E0C75F1DD4F879772C04F8CA /* WindowLayoutNumberField.swift in Sources */ = {isa = PBXBuildFile; fileRef = D245764DB29BFEEB47A024A1 /* WindowLayoutNumberField.swift */; };
+		E0C8D144C0D7A0FFDC6D3F88 /* JSONToolScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9266A13DF1D6216EF4B4879D /* JSONToolScreen.swift */; };
 		E1A4472391E5AD3EE828202E /* RedactedText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BEA1E122A8139A21E646FE2 /* RedactedText.swift */; };
 		E268D74F0DEFFA598E2D02AA /* OnboardingCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE6972F177922B1EB8831735 /* OnboardingCard.swift */; };
 		E29056264B57A3F0EC5F5698 /* SupportCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97986EE62AE844FFCCD27449 /* SupportCoordinator.swift */; };
@@ -1383,6 +1384,7 @@
 		9188FA8A06EAE3E55FFCBC70 /* UpdateInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateInstaller.swift; sourceTree = "<group>"; };
 		91D0784E49BC5899A585F285 /* Scrypt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scrypt.swift; sourceTree = "<group>"; };
 		920FAC043BC3887B6D2C314D /* EscapeKeyBehavior.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EscapeKeyBehavior.swift; sourceTree = "<group>"; };
+		9266A13DF1D6216EF4B4879D /* JSONToolScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONToolScreen.swift; sourceTree = "<group>"; };
 		92AF20F1007F7F3DC1013C2A /* CalloutShape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalloutShape.swift; sourceTree = "<group>"; };
 		92B4495E56754B05B5F3551D /* CalcPercent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcPercent.swift; sourceTree = "<group>"; };
 		92C3FC7FD77C74762B72637B /* ExtensionStorePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionStorePanel.swift; sourceTree = "<group>"; };
@@ -3285,6 +3287,7 @@
 			isa = PBXGroup;
 			children = (
 				EBC49AC479BA072D0CE742C1 /* JSONToolCoordinator.swift */,
+				9266A13DF1D6216EF4B4879D /* JSONToolScreen.swift */,
 				DA3173F67F0971E317F260B4 /* JSONToolWindowView.swift */,
 			);
 			path = UI;
@@ -4437,6 +4440,7 @@
 				F289967F8DE039B6E1C3BE12 /* InterfaceSize.swift in Sources */,
 				B028A33F0DF3614C474AA80E /* JSONTool.swift in Sources */,
 				CA168CB4AFCBF6A0132A27E2 /* JSONToolCoordinator.swift in Sources */,
+				E0C8D144C0D7A0FFDC6D3F88 /* JSONToolScreen.swift in Sources */,
 				465E1FEF8CBF7CCAF5AD1877 /* JSONToolWindowView.swift in Sources */,
 				CD52F594782DD51D5B3D4CE8 /* JSONValue.swift in Sources */,
 				8855C67C7EE196E3F9EDE778 /* KeyCapChip.swift in Sources */,

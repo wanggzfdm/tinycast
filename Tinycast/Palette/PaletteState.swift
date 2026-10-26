@@ -16,6 +16,8 @@ final class PaletteState {
     var query: String = "" { didSet { restoredSelection = nil; if !query.isEmpty { pastedText = nil } } }
     /// A clipboard copy autofilled into the launcher: held as a placeholder chip, not typed text.
     var pastedText: String?
+    /// The text a JSON Tool summon carries in, set after the push so `openScreen` keeps it.
+    var jsonToolText: String = ""
     @ObservationIgnored private(set) var restoredSelection: Int?
     var selection: Int = 0
     /// True while an IME holds marked text, which leaves `query` empty. The panel publishes it.
@@ -153,6 +155,7 @@ final class PaletteState {
         menuOpen = false
         menuQuery = ""
         pastedText = nil
+        jsonToolText = ""
         focusToken = UUID()
     }
 

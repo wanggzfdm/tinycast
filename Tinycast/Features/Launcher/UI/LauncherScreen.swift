@@ -157,6 +157,94 @@ struct LauncherScreen: PaletteScreen {
         }
     }
 
+// MARK: - Grid navigation
+
+    /// The entry sections, in publication order: favorites, meetings, suggestions, results,
+    /// then one group per kind. Each is an independent grid; files and fallbacks stay vertical.
+    private struct EntrySection: Equatable {
+        let start: Int
+        let count: Int
+    }
+
+    private var gridColumns: Int { 6 }
+
+    private var cardOffset: Int { isCardSelected(0) && rows.count > 0 ? 1 : 0 }
+
+    /// The entry plane the grid navigates: `results`, offset by the leading card if one shows.
+    private var entrySections: [EntrySection] {
+        var sections: [EntrySection] = []
+        var start = cardOffset
+        func add(_ count: Int) {
+            guard count > 0 else { return }
+            sections.append(EntrySection(start: start, count: count))
+            start += count
+        }
+        add(favoriteCount)
+        add(meetingCount)
+        add(suggestionCount)
+        add(matchCount)
+        let rest = results.dropFirst(favoriteCount + meetingCount + suggestionCount + matchCount)
+        let ordered: [AppEntry.Kind] = [
+            .meeting, .application, .systemSettings, .extensionCommand, .quicklink, .appleShortcut,
+            .snippet, .systemAction, .windowLayout, .windowRoom, .windowCommand, .customCommand,
+            .quickAction, .command
+        ]
+        for kind in ordered {
+            add(rest.filter { $0.kind == kind }.count)
+        }
+        return sections
+    }
+
+    /// Which entry section a flat selection lands in, and its in-section index; nil for a card,
+    /// a file, or a fallback row, which navigate flat instead of as a grid.
+    private func gridPosition(of selection: Int) -> (section: EntrySection, index: Int)? {
+        for section in entrySections {
+            if selection >= section.start, selection < section.start + section.count {
+                return (section, selection - section.start)
+            }
+        }
+        return nil
+    }
+
+    func move(_ delta: Int, axis: PaletteAxis, from selection: Int) -> Int? {
+        guard let (section, index) = gridPosition(of: selection) else {
+            // Card, file, fallback: step the flat plane, or nil to hand the key to the palette.
+            let count = rows.count
+            guard count > 0 else { return nil }
+            if axis == .horizontal { return nil }
+            return min(max(selection + delta, 0), count - 1)
+        }
+        let columns = gridColumns
+        let count = section.count
+        switch axis {
+        case .horizontal:
+            return section.start + min(max(index + delta, 0), count - 1)
+        case .vertical:
+            if delta > 0 {
+                let next = index + columns
+                // Stay inside the section unless a lower partial row is still below.
+                if next < count { return section.start + next }
+                // A lower partial row in this section: clamp to its last cell.
+                if index / columns < (count - 1) / columns { return section.start + count - 1 }
+                // No more in this section: spill into the next at the same column.
+                let sections = entrySections
+                guard let position = sections.firstIndex(where: { $0 == section }) else { return nil }
+                guard position + 1 < sections.count else { return nil }
+                let nextSection = sections[position + 1]
+                return nextSection.start + min(index % columns, nextSection.count - 1)
+            } else {
+                if index - columns >= 0 { return section.start + (index - columns) }
+                let sections = entrySections
+                guard let position = sections.firstIndex(where: { $0 == section }) else { return nil }
+                guard position > 0 else { return nil }
+                let previous = sections[position - 1]
+                let lastRowStart = ((previous.count - 1) / columns) * columns
+                return previous.start + min(lastRowStart + index % columns, previous.count - 1)
+            }
+        }
+    }
+
+    /// The pill carries no selection, so the screen applies the clamp the palette applies.
     private func row(at selection: Int) -> Row? {
         rows.indices.contains(selection) ? rows[selection] : nil
     }

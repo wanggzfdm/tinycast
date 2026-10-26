@@ -97,6 +97,11 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             }
         }
     }
+    /// Re-apply the panel's frame for the current mode, after a push that changed its size needs.
+    func reposition() {
+        guard let panel else { return }
+        positionPanel(panel, collapsed: core.paletteCoordinator.paletteIsCollapsed)
+    }
 
     // Isolated so teardown may touch the main-actor monitor; the block is already weak.
     isolated deinit {
@@ -481,9 +486,11 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     private func positionPanel(_ panel: NSPanel, collapsed: Bool) {
         guard let anchor = resolveAnchor() else { return }
         let size = metrics.size
-        let height = collapsed ? size.compactHeight : size.panelHeight
+        let isJSONTool = core.palette.mode == .jsonTool
+        let width = isJSONTool ? 900 : size.panelWidth
+        let height = collapsed ? size.compactHeight : (isJSONTool ? 680 : size.panelHeight)
         let frame = NSRect(
-            x: anchor.x, y: anchor.y - height, width: size.panelWidth, height: height)
+            x: anchor.x, y: anchor.y - height, width: width, height: height)
         panel.setFrame(frame, display: true)
     }
 

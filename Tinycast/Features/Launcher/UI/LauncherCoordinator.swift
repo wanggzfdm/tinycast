@@ -92,8 +92,9 @@ final class LauncherCoordinator {
                 return
             }
             if id == .jsonFormatter {
-                paletteCoordinator.hidePalette(restoreFocus: false)
-                core.jsonToolCoordinator.show(text: searchQuery ?? "")
+                core.palette.jsonToolText = searchQuery ?? ""
+                paletteCoordinator.navigate(to: .jsonTool)
+                windowController.reposition()
                 return
             }
             runCommand(id)
