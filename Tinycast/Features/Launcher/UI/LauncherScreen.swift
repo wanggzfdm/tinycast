@@ -71,7 +71,8 @@ struct LauncherScreen: PaletteScreen {
             matchCount += 1
         }
         if pinned == nil {
-            let content = CommandCatalog.contentMatches(for: vm.query)
+            let matchQuery = vm.query.isEmpty ? (vm.pastedText ?? "") : vm.query
+            let content = CommandCatalog.contentMatches(for: matchQuery)
             for entry in content where visibility.isVisible(entry) {
                 results.insert(entry, at: 0)
                 matchCount += 1
@@ -368,7 +369,7 @@ struct LauncherScreen: PaletteScreen {
         case .meeting(let meeting): core.calendarCoordinator.activateMeeting(id: meeting.id)
         case .entry(let app):
             core.launcherCoordinator.launch(
-                app, searchQuery: vm.query, arguments: argumentValues(for: app))
+                app, searchQuery: vm.query.isEmpty ? (vm.pastedText ?? "") : vm.query, arguments: argumentValues(for: app))
         case .file(let result): core.fileSearchCoordinator.open(result)
         case .fallback(let fallback, _):
             core.fallbackCoordinator.run(fallback, query: vm.query)
