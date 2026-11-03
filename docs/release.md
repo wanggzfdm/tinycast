@@ -60,7 +60,7 @@ gate — it neither runs the harnesses nor builds the app, so the whole bar in
 needed. Run it from the **Actions** tab (`Release` → **Run workflow**) and pick:
 
 - **channel** — `beta` or `stable`. Each builds a distinct app (`Tinycast Beta.app` / `Tinycast.app`)
-  with its own bundle id, alongside the local `Tinycast Dev.app`. Beta gets an auto-incrementing
+  with its own bundle id, installed side by side. Beta gets an auto-incrementing
   `-beta.N` suffix (`N` = the Actions run number) so re-running never collides; stable ships the
   version as-is.
 - **version** — base semver, e.g. `0.2.0`.

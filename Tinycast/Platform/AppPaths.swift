@@ -14,7 +14,7 @@ enum AppPaths {
         root(.applicationSupportDirectory, bundleID: bundleID)
     }
 
-    /// `~/.config/tinycast/settings.json`; another channel suffixes the folder, as `tinycast-dev`.
+    /// `~/.config/tinycast/settings.json`; another bundle id suffixes the folder, as `tinycast-fork`.
     static func settingsFile(
         bundleID: String = Bundle.main.bundleIdentifier ?? "com.tinycast.app"
     ) -> URL {

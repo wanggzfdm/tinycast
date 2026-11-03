@@ -56,7 +56,7 @@ compilation of its 2-bit weights; Ultra's encoder and both variants' decoder/joi
   when Dictation is disabled. An unavailable device keeps its record for a later attempt; new ducking
   waits for that recovery. File writes run off-main and finish before the hardware changes.
 - The microphone, waveform, permissions and insertion stay in Tinycast. Model loading, audio
-  features and decoding run in `Tinycast Dictation` (`Tinycast Dev Dictation` in Debug), started
+  features and decoding run in `Tinycast Dictation`, started
   only for transcription. Main-app state never retains Core ML models or imports the adapters.
   The helper is an embedded accessory app with no bundled icon, Dock item or windows.
 - Core ML models live under this build's bundle-ID cache. After one minute idle by default, the

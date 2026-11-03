@@ -411,8 +411,9 @@ There is no UI test suite, so this is it. Run the core sweep for any change that
 run the scoped section for whatever feature you touched. Budget about five minutes plus three per
 section.
 
-Run against the **Debug channel** (`Tinycast Dev.app`, `com.tinycast.app.dev`). It has its own prefs,
-caches, TCC grants and login item, so this cannot disturb an installed copy.
+Run against a **local Release build** (`build/DerivedData/Build/Products/Release/Tinycast.app`,
+bundle id `com.tinycast.app`). It shares prefs, caches, TCC grants and the login item with an
+installed copy, so quit any installed copy first and run one at a time.
 
 ### Core
 
@@ -862,21 +863,21 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - Untick a category on **import** and confirm it did not arrive, while the ticked ones did
 - An image clip round-trips and still renders; the archive can then be deleted without breaking it
 - A file whose `manifest.json` `format` was hand-edited is refused **with a message naming it**
-- Cancelling the save panel leaves nothing in `~/Library/Caches/com.tinycast.app.dev/backup-staging/`
+- Cancelling the save panel leaves nothing in `~/Library/Caches/com.tinycast.app/backup-staging/`
 - **`snippetsEnabled` is not in the exported file**, and importing does not enable snippets
 - Nothing in the extracted tree names a Keychain item, an extension, or an AI conversation
 
 ### Clean install
 
 The realistic storage failure is a store that crashes on an absent file rather than starting empty.
-Wipe the Dev channel and check that path directly:
+Quit the app, wipe its storage, and check that path directly:
 
 ```sh
-rm -rf ~/Library/Caches/com.tinycast.app.dev
-rm -rf "$HOME/Library/Application Support/com.tinycast.app.dev"
-rm -rf ~/.config/tinycast-dev
-defaults delete com.tinycast.app.dev 2>/dev/null || true
-tccutil reset Accessibility com.tinycast.app.dev 2>/dev/null || true
+rm -rf ~/Library/Caches/com.tinycast.app
+rm -rf "$HOME/Library/Application Support/com.tinycast.app"
+rm -rf ~/.config/tinycast
+defaults delete com.tinycast.app 2>/dev/null || true
+tccutil reset Accessibility com.tinycast.app 2>/dev/null || true
 ```
 
 - Launches with every store directory absent — no crash, no hang; onboarding runs
@@ -890,5 +891,5 @@ tccutil reset Accessibility com.tinycast.app.dev 2>/dev/null || true
 - **Every setting shows its intended default.** Walk the panes: this is what catches a broken
   absence-versus-`false` read
 - Quit and relaunch: everything created above persisted
-- Nothing was written outside `com.tinycast.app.dev/`. Channel isolation is not negotiable — a Dev build
-  writing into the stable app's directory is a defect even though the data is disposable
+- Nothing was written outside `com.tinycast.app/`. Storage is per bundle id and not negotiable —
+  anything writing outside it is a defect even though the data is disposable
