@@ -350,8 +350,7 @@ struct DoubleTapDetectorTests {
         expect(
             unbindable
                 == [
-                    .openInBrowser, .runShellCommand, .openInTerminal, .revealInFinder,
-                    .jsonFormatter, .quit,
+                    .openInBrowser, .runShellCommand, .openInTerminal, .revealInFinder, .quit,
                 ],
             "only the query-driven rows and Quit are unbindable — got \(unbindable.map(\.name))")
         expect(

@@ -92,7 +92,8 @@ final class LauncherCoordinator {
                 return
             }
             if id == .jsonFormatter {
-                core.palette.jsonToolText = searchQuery ?? ""
+                // Only real JSON rides in; a name search ("json") opens the empty tool.
+                core.palette.jsonToolText = searchQuery.flatMap { JSONTool.isValid($0) ? $0 : nil } ?? ""
                 paletteCoordinator.navigate(to: .jsonTool)
                 windowController.reposition()
                 return
@@ -215,8 +216,11 @@ final class LauncherCoordinator {
             Task { await core.cameraCoordinator.show() }
         case .define:
             core.dictionaryCoordinator.show()
-        case .openInBrowser, .runShellCommand, .openInTerminal, .revealInFinder, .jsonFormatter:
+        case .openInBrowser, .runShellCommand, .openInTerminal, .revealInFinder:
             break  // Query-driven: each runs where the typed text is, never through this funnel.
+        case .jsonFormatter:
+            core.palette.jsonToolText = ""
+            paletteCoordinator.togglePalette(mode: .jsonTool)
         case .joinNextMeeting:
             calendarCoordinator.joinNextMeeting()
         case .copyMeetingLink:

@@ -31,8 +31,8 @@ struct JSONToolPasteTests {
         let matchQuery = vm.pastedText ?? vm.query
         expect(matchQuery == copied, "the content-match query falls back to the paste chip")
 
-        // Mirrors LauncherCoordinator.launch(.jsonFormatter): set jsonToolText, then navigate.
-        vm.jsonToolText = matchQuery
+        // Mirrors LauncherCoordinator.launch(.jsonFormatter): only valid JSON rides in, then navigate.
+        vm.jsonToolText = JSONTool.isValid(matchQuery) ? matchQuery : ""
         // `navigate(to:)` pushes because the palette is visible and mode differs.
         // push → replace → openScreen clears pastedText/query but must keep jsonToolText.
         vm.push(mode: .jsonTool)
@@ -53,7 +53,7 @@ struct JSONToolPasteTests {
         expect(vm.mode == .launcher, "back returns to the launcher")
         vm.pastedText = secondCopy
         let secondQuery = vm.pastedText ?? vm.query
-        vm.jsonToolText = secondQuery
+        vm.jsonToolText = JSONTool.isValid(secondQuery) ? secondQuery : ""
         vm.push(mode: .jsonTool)
         expect(vm.jsonToolText == secondCopy, "a second summon carries the new copy, not the old one")
 
@@ -61,9 +61,18 @@ struct JSONToolPasteTests {
         let vm2 = PaletteState()
         vm2.prepare(mode: .launcher)
         vm2.pastedText = ""
-        vm2.jsonToolText = vm2.pastedText ?? vm2.query
+        let emptyQuery = vm2.pastedText ?? vm2.query
+        vm2.jsonToolText = JSONTool.isValid(emptyQuery) ? emptyQuery : ""
         vm2.push(mode: .jsonTool)
         expect(vm2.jsonToolText.isEmpty, "an empty copy leaves jsonToolText empty")
+
+        // A name search ("json") is not JSON: the same launch path seeds the empty tool.
+        let vm3 = PaletteState()
+        vm3.prepare(mode: .launcher)
+        let nameQuery = "json"
+        vm3.jsonToolText = JSONTool.isValid(nameQuery) ? nameQuery : ""
+        vm3.push(mode: .jsonTool)
+        expect(vm3.jsonToolText.isEmpty, "a name search opens the tool with no carried text")
 
         report()
     }

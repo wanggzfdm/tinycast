@@ -203,7 +203,7 @@ enum CommandID: String, CaseIterable, Sendable {
 
     /// Query-driven: the typed text is their input, so they are built where offered, never listed.
     var isQueryDriven: Bool {
-        self == .openInBrowser || self == .runShellCommand || self == .openInTerminal || self == .revealInFinder || self == .jsonFormatter
+        self == .openInBrowser || self == .runShellCommand || self == .openInTerminal || self == .revealInFinder
     }
 
     /// A chord carries no query, and none should be able to terminate the app outright.
