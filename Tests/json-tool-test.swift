@@ -59,7 +59,7 @@ struct JSONToolTests {
         let doc = #"{"items":[{"val":1},{"val":2}]}"#
         expect(filterString(doc, ".items[0].val"), expected: "1")
         expect(filterString(doc, ".items.map(x => x.val)"), expected: "[1,2]")
-        expect(filterString(doc, ".missing") == nil, true)
+        expect(filterString(doc, ".missing"), expected: "\"// undefined\"")
 
         // Folds: one pair per container, with correct nesting depth and line.
         let foldedDoc = "{\n\"a\": [1, 2],\n\"b\": {\"c\": 3}\n}"

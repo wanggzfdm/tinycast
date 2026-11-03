@@ -42,7 +42,7 @@ extension JSONToolScreen: PaletteScreen {
             width: 0, fieldNames: [], firstIncompleteField: nil,
             placement: .besideSearchField,
             view: AnyView(
-                Text("JSON Tool")
+                Text("JSON 编辑器")
                     .font(.headline)
                     .foregroundStyle(Theme.Colors.textPrimary)))
     }
@@ -50,6 +50,7 @@ extension JSONToolScreen: PaletteScreen {
     @ViewBuilder
     func body(selection: Int, scroll: ScrollIntent) -> AnyView {
         AnyView(
-            JSONToolWindowView(coordinator: coordinator, initialText: vm.jsonToolText))
+            JSONToolWindowView(coordinator: coordinator, initialText: vm.jsonToolText)
+                .id(vm.jsonToolText))
     }
 }

@@ -73,7 +73,7 @@ struct LauncherScreen: PaletteScreen {
         if pinned == nil {
             let matchQuery = vm.pastedText ?? vm.query
             let content = CommandCatalog.contentMatches(for: matchQuery)
-            for entry in content where visibility.isVisible(entry) {
+            for entry in content {
                 results.insert(entry, at: 0)
                 matchCount += 1
             }

@@ -1,4 +1,5 @@
 import Foundation
+import JavaScriptCore
 
 /// A JSON diagnostic pinned to a source location, so the editor can say where it failed.
 struct JSONToolError: Error, Equatable, LocalizedError {
@@ -225,122 +226,11 @@ enum JSONTool {
         return result
     }
 
-    /// Walks a dot/bracket expression (`.key`, `[0]`, `.map(x => x.key)`) against the document.
+    /// Evaluates a JS expression against the document, mirroring ZTools' `evalJsInContext`:
+    /// `this` is bound to the parsed value, the user's expression is appended to `this` and eval'd.
     static func filter(_ text: String, expression: String) throws -> Any {
-        var value = try parse(text)
-        let chars = Array(expression)
-        var i = 0
-        func error(_ message: String) -> JSONToolError { JSONToolError(message: message, line: 1, column: max(1, i + 1)) }
-        func skip() { while i < chars.count && chars[i].isWhitespace { i += 1 } }
-        func key() throws -> String {
-            skip()
-            guard i < chars.count else { throw error("Expected key") }
-            if chars[i] == "\"" { return try quotedKey() }
-            let s = i
-            while i < chars.count && (chars[i].isLetter || chars[i].isNumber || chars[i] == "_") { i += 1 }
-            guard s < i else { throw error("Expected object key") }
-            return String(chars[s..<i])
-        }
-        func quotedKey() throws -> String {
-            i += 1
-            var result = ""
-            while i < chars.count {
-                let c = chars[i]
-                i += 1
-                if c == "\"" { return result }
-                guard c == "\\" else { result.append(c); continue }
-                guard i < chars.count else { throw error("Unterminated escape in quoted key") }
-                let escaped = chars[i]
-                i += 1
-                switch escaped {
-                case "\"", "\\", "/": result.append(escaped)
-                case "b": result.append("\u{8}")
-                case "f": result.append("\u{c}")
-                case "n": result.append("\n")
-                case "r": result.append("\r")
-                case "t": result.append("\t")
-                case "u":
-                    guard i + 4 <= chars.count, let first = UInt16(String(chars[i..<i + 4]), radix: 16) else {
-                        throw error("Invalid Unicode escape in quoted key")
-                    }
-                    i += 4
-                    if (0xD800...0xDBFF).contains(first) {
-                        guard i + 6 <= chars.count, chars[i] == "\\", chars[i + 1] == "u",
-                            let second = UInt16(String(chars[i + 2..<i + 6]), radix: 16),
-                            (0xDC00...0xDFFF).contains(second) else { throw error("Invalid Unicode surrogate pair in quoted key") }
-                        i += 6
-                        let scalar = UnicodeScalar(0x10000 + (UInt32(first - 0xD800) << 10) + UInt32(second - 0xDC00))!
-                        result.append(Character(scalar))
-                    } else if (0xDC00...0xDFFF).contains(first) {
-                        throw error("Invalid Unicode surrogate pair in quoted key")
-                    } else {
-                        result.append(Character(UnicodeScalar(first)!))
-                    }
-                default: throw error("Invalid escape in quoted key")
-                }
-            }
-            throw error("Unterminated quoted key")
-        }
-        func lookup(_ key: String) throws -> Any {
-            guard let dict = value as? [String: Any], let v = dict[key] else { throw error("Missing key: \(key)") }
-            return v
-        }
-        skip()
-        guard i < chars.count, chars[i] == "." || chars[i] == "[" else { throw error("Filter must start with . or [") }
-        while i < chars.count {
-            skip()
-            if chars[i] == "." {
-                i += 1
-                skip()
-                if i + 3 <= chars.count, String(chars[i..<i + 3]) == "map" {
-                    i += 3
-                    skip()
-                    guard i < chars.count, chars[i] == "(" else { throw error("Invalid map expression") }
-                    i += 1
-                    skip()
-                    let mapStart = i
-                    while i < chars.count && (chars[i].isWhitespace || chars[i].isLetter || chars[i] == "=" || chars[i] == ">") { i += 1 }
-                    let mapHead = String(chars[mapStart..<i]).filter { !$0.isWhitespace }
-                    guard mapHead == "x=>x" else { throw error("Only x => x.key is supported") }
-                    skip()
-                    guard i < chars.count, chars[i] == "." else { throw error("map requires x.key") }
-                    i += 1
-                    let k = try key()
-                    skip()
-                    guard i < chars.count, chars[i] == ")" else { throw error("Invalid map expression") }
-                    i += 1
-                    guard let array = value as? [Any] else { throw error("map requires an array") }
-                    value = try array.map {
-                        guard let dict = $0 as? [String: Any], let v = dict[k] else { throw error("Missing key: \(k)") }
-                        return v
-                    }
-                } else {
-                    value = try lookup(try key())
-                }
-            } else if chars[i] == "[" {
-                i += 1
-                skip()
-                if i < chars.count, chars[i] == "\"" {
-                    let k = try key()
-                    skip()
-                    guard i < chars.count, chars[i] == "]" else { throw error("Invalid bracket key") }
-                    i += 1
-                    value = try lookup(k)
-                } else {
-                    let s = i
-                    while i < chars.count && chars[i].isNumber { i += 1 }
-                    guard s < i, let n = Int(String(chars[s..<i])) else { throw error("Invalid array index") }
-                    skip()
-                    guard i < chars.count, chars[i] == "]" else { throw error("Invalid array index") }
-                    i += 1
-                    guard let array = value as? [Any], n < array.count else { throw error("Array index out of bounds") }
-                    value = array[n]
-                }
-            } else {
-                throw error("Unexpected filter token")
-            }
-        }
-        return value
+        let value = try parse(text)
+        return try filter(value, expression: expression)
     }
 
     private static func rejectTrailingCommas(_ text: String) throws {
@@ -386,6 +276,217 @@ enum JSONTool {
         let last = prefix.lastIndex(of: "\n")
         let segment = last.map { String(prefix[prefix.index(after: $0)...]) } ?? prefix
         return (line, max(1, segment.count + 1))
+    }
+
+    /// Evaluates `this` + the user's expression in a JavaScriptCore sandbox, mirroring ZTools'
+    /// `evalJsInContext`. Returns a Swift value the UI can re-serialize; `// undefined` and
+    /// `// function` are returned as strings to match ZTools' sentinel output.
+    static func filter(_ value: Any, expression: String) throws -> Any {
+        guard let context = JSContext() else { throw JSONToolError(message: "无法创建 JS 上下文", line: 1, column: 1) }
+        var errorMessage: String?
+        context.exceptionHandler = { _, exception in
+            errorMessage = exception?.toString()
+        }
+        let json = try serialize(value, options: [.fragmentsAllowed, .withoutEscapingSlashes])
+        let escapedJSON = String(decoding: try JSONSerialization.data(withJSONObject: [json]), as: UTF8.self)
+        let unwrapped = String(escapedJSON.dropFirst().dropLast())
+        let expr = expression.trimmingCharacters(in: .whitespacesAndNewlines)
+        let escapedExpr = expr
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        let script = """
+        var __input = JSON.parse(\(escapedJSON));
+        eval("__input\(escapedExpr)");
+        """
+        let result = context.evaluateScript(script)
+        if let errorMessage {
+            throw JSONToolError(message: errorMessage, line: 1, column: 1)
+        }
+        guard let result else { return "// undefined" }
+        if result.isUndefined { return "// undefined" }
+        if let str = result.toString(), str == "[object Function]" { return "// function" }
+        if let obj = result.toObject() {
+            if let dict = obj as? [String: Any], dict.isEmpty, result.toString() == "undefined" {
+                return "// undefined"
+            }
+            return obj
+        }
+        return result.toString() ?? ""
+    }
+
+    /// Removes `//` line comments and `/* */` block comments outside of strings.
+    static func stripComments(_ text: String) -> String {
+        var result = ""
+        result.reserveCapacity(text.count)
+        var i = text.startIndex
+        while i < text.endIndex {
+            let c = text[i]
+            if c == "\"" {
+                let (strEnd, next) = readString(text, from: i)
+                result.append(contentsOf: text[i..<next])
+                i = next
+                _ = strEnd
+                continue
+            }
+            if c == "/" && text.index(after: i) < text.endIndex {
+                let next = text[text.index(after: i)]
+                if next == "/" {
+                    let lineEnd = text[i...].firstIndex(of: "\n") ?? text.endIndex
+                    i = lineEnd
+                    continue
+                }
+                if next == "*" {
+                    let close = text[i...].range(of: "*/")
+                    if let close {
+                        i = text.index(after: close.upperBound)
+                        continue
+                    }
+                }
+            }
+            result.append(c)
+            i = text.index(after: i)
+        }
+        return result
+    }
+
+    private static func readString(_ text: String, from start: String.Index) -> (end: String.Index, next: String.Index) {
+        var i = text.index(after: start)
+        while i < text.endIndex {
+            let c = text[i]
+            if c == "\\" {
+                i = text.index(after: i)
+                if i < text.endIndex { i = text.index(after: i) }
+                continue
+            }
+            if c == "\"" {
+                return (i, text.index(after: i))
+            }
+            i = text.index(after: i)
+        }
+        return (text.endIndex, text.endIndex)
+    }
+
+    /// A parsed value as XML, mirroring ZTools' `jsonObjToXml` + `toXml`.
+    /// `@attr` keys become attributes, `#text` a text node, `#cdata` a CDATA section.
+    static func toJSONXML(_ value: Any) -> String {
+        if let dict = value as? [String: Any] {
+            let keys = dict.keys.sorted()
+            if keys.count == 1, let only = keys.first, !(dict[only] is [Any]) {
+                return toXMLNode(key: only, value: dict[only]!)
+            }
+            return "<root>\(keys.map { toXMLNode(key: $0, value: dict[$0]!) }.joined())</root>"
+        }
+        if let array = value as? [Any] {
+            return "<root>\(array.map { toXMLNode(key: "element", value: $0) }.joined())</root>"
+        }
+        return "<root>\(xmlText(value))</root>"
+    }
+
+    private static func toXMLNode(key: String, value: Any) -> String {
+        if let array = value as? [Any] {
+            return array.map { toXMLNode(key: key, value: $0) }.joined()
+        }
+        if let dict = value as? [String: Any] {
+            var attrs = ""
+            var hasChildren = false
+            for k in dict.keys.sorted() where k.hasPrefix("@") {
+                let attrName = String(k.dropFirst()).replacingOccurrences(of: "/", with: "-")
+                attrs += " \(attrName)=\"\(xmlText(dict[k]!))\""
+            }
+            for k in dict.keys.sorted() where !k.hasPrefix("@") { hasChildren = true; _ = k }
+            if !hasChildren { return "<\(key)\(attrs)/>" }
+            var inner = ""
+            for k in dict.keys.sorted() {
+                if k == "#text" { inner += xmlText(dict[k]!) }
+                else if k == "#cdata" { inner += "<![CDATA[\(dict[k]!)]]>" }
+                else if !k.hasPrefix("@") { inner += toXMLNode(key: k, value: dict[k]!) }
+            }
+            return "<\(key)\(attrs)>\(inner)</\(key)>"
+        }
+        return "<\(key)>\(xmlText(value))</\(key)>"
+    }
+
+    private static func xmlText(_ value: Any) -> String {
+        if value is NSNull { return "" }
+        if let number = value as? NSNumber, CFGetTypeID(number) == CFBooleanGetTypeID() {
+            return number.boolValue ? "true" : "false"
+        }
+        return String(describing: value)
+    }
+
+    /// A parsed value as TypeScript interface declarations, mirroring ZTools' type inferrer:
+    /// each nested object becomes its own `interface`, arrays infer from their first element.
+    static func toTypeScript(_ value: Any, name: String = "Root") -> String {
+        var names: [String] = []
+        let root = tsName(for: value, key: name, isRoot: true, names: &names)
+        return names.joined(separator: "\n\n")
+            + (names.isEmpty ? "type \(name) = \(tsScalar(value))" : "")
+            + (root != name && !names.isEmpty ? "" : "")
+    }
+
+    private static func tsName(for value: Any, key: String, isRoot: Bool, names: inout [String]) -> String {
+        if let dict = value as? [String: Any] {
+            let ifaceName = tsUniqueName(key, names: names)
+            names.append(tsInterface(name: ifaceName, dict: dict, names: &names))
+            return ifaceName
+        }
+        if let array = value as? [Any], !array.isEmpty {
+            let elemKey = isRoot ? "\(key)Item" : tsSingular(key)
+            let elemType = tsName(for: array[0], key: elemKey, isRoot: false, names: &names)
+            return "\(elemType.contains(" ") ? "(\(elemType))" : elemType)[]"
+        }
+        if let array = value as? [Any], array.isEmpty {
+            return "unknown[]"
+        }
+        return tsScalar(value)
+    }
+
+    private static func tsInterface(name: String, dict: [String: Any], names: inout [String]) -> String {
+        var lines = ["interface \(name) {"]
+        for k in dict.keys.sorted() {
+            let v = dict[k]!
+            let fieldName = tsFieldName(k)
+            let type = tsName(for: v, key: k, isRoot: false, names: &names)
+            let isOptional = v is NSNull
+            lines.append("  \(fieldName)\(isOptional ? "?" : ""): \(isOptional && type == "null" ? "any" : type);")
+        }
+        lines.append("}")
+        return lines.joined(separator: "\n")
+    }
+
+    private static func tsUniqueName(_ key: String, names: [String]) -> String {
+        var base = tsPascalCase(key)
+        if base.isEmpty { base = "Root" }
+        if !names.contains(base) { return base }
+        var i = 2
+        while names.contains("\(base)\(i)") { i += 1 }
+        return "\(base)\(i)"
+    }
+
+    private static func tsPascalCase(_ key: String) -> String {
+        key.split(separator: " ").map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined()
+            .filter { $0.isLetter || $0.isNumber }
+    }
+
+    private static func tsSingular(_ key: String) -> String {
+        if key.hasSuffix("s") && !key.hasSuffix("ss") { return String(key.dropLast()) }
+        return key
+    }
+
+    private static func tsFieldName(_ key: String) -> String {
+        if key.isEmpty { return "''" }
+        if key.first?.isLetter == true || key.first == "_" {
+            if key.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }) { return key }
+        }
+        return "'\(key)'"
+    }
+
+    private static func tsScalar(_ value: Any) -> String {
+        if value is NSNull { return "null" }
+        if let n = value as? NSNumber, CFGetTypeID(n) == CFBooleanGetTypeID() { return "boolean" }
+        if value is NSNumber { return "number" }
+        if value is String { return "string" }
+        return "unknown"
     }
 
     private static func serialize(_ value: Any, options: JSONSerialization.WritingOptions) throws -> String {
