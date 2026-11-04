@@ -64,6 +64,13 @@ system-wide chord, and HIToolbox's TIS APIs remain the public input-source mecha
 Never break these without an explicit task to do so. Anything feature-specific lives in that
 feature's doc, under its own `## Invariants`.
 
+- **Software update is removed from this fork.** The `checkForUpdates` command, the "Check for
+  Updates…" menu/About entries, the `automaticallyCheckForUpdates` setting, and the automatic update
+  prompt path are all deleted. `UpdateCoordinator`'s `applyEnabled`/`applyAutomaticChecking`/
+  `presentIfAvailable` are kept as no-ops only so the module compiles. **Do not restore any of these**
+  unless an explicit task asks for it — re-adding the command, the setting, the menu entries, or
+  wiring the automatic check back into `AppCore.start()` is out of scope for every other change.
+
 - **`AppCore` is the sole owner.** New long-lived state goes on `AppCore`, wired in `start()` — never a
   competing singleton. Views reach a feature's **coordinator** through `@Environment`, not `AppCore`.
 - **A file under `Features/*/Model/` may not import AppKit or SwiftUI**, and takes every environment
@@ -132,9 +139,10 @@ feature's doc, under its own `## Invariants`.
   constant or type instead. Cap 100 characters, delete rather than update, and never comment a change
   you just made. Nothing lints this; get it right the first time.
   Full rules: [standards.md#comments](docs/standards.md#comments).
-- **Debug builds are their own channel** — `Tinycast Dev.app` / `com.tinycast.app.dev` — so a local run
-  never shares prefs, caches, TCC grants or the login item with an installed copy. Anything newly
-  persisted must stay keyed by `Bundle.main.bundleIdentifier`.
+- **There is one channel: the release app** — `Tinycast.app` / `com.tinycast.app`. Every local build
+(Debug or Release) shares the installed copy's prefs, caches, TCC grants and login item, so don't run
+a local build and an installed copy at the same time. Anything newly persisted must stay keyed by
+`Bundle.main.bundleIdentifier`.
 - **XcodeGen owns the project.** `Tinycast.xcodeproj` is committed but generated from `project.yml`;
   after editing it, run `xcodegen generate` and commit both. No SwiftPM, and never `Bundle.module`.
 

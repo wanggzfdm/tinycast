@@ -61,8 +61,8 @@ value. `[]` removes every shortcut, and omitting the key leaves the current sele
 
 ## Location
 
-`~/.config/tinycast/settings.json` on stable; another channel suffixes the folder, so Dev uses
-`tinycast-dev` and a fork its bundle ID. `$XDG_CONFIG_HOME` is not read, because an app opened from
+`~/.config/tinycast/settings.json` on stable; another bundle id suffixes the folder, so a fork uses
+its own. `$XDG_CONFIG_HOME` is not read, because an app opened from
 Finder never sees the shell's environment. A symlink is followed and kept: the write lands in its
 target, so a file linked from a dotfiles repository stays linked.
 

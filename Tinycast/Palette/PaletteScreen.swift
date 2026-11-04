@@ -38,7 +38,7 @@ typealias MenuPanelClipPath =
     init(
         popover: PopoverMenuContent, selection: Binding<Int>, width: CGFloat? = nil,
         visibleRows: CGFloat? = nil,
-        search: PopoverMenu.Search, onActivate: @escaping (Int) -> Void,
+        search: PopoverMenu.Search?, onActivate: @escaping (Int) -> Void,
         preferredSelection: Int? = nil, extraRowsHeight: CGFloat = 0
     ) {
         self.init(
@@ -80,6 +80,8 @@ private extension MenuPanelCorner {
     var primaryActionTitle: String { get }
     /// True when the screen owns the keyboard, so the header's field is hidden and unfocused.
     var hidesSearchField: Bool { get }
+    /// The title a tool screen docks where the search field sits; nil keeps the field merely hidden.
+    var toolTitle: String? { get }
     /// True when the footer and ⌘K still act with no rows — a form's action belongs to the screen.
     var actsWithoutRows: Bool { get }
     /// Where an open, a new query or a new filter puts the highlight; past row 0 it is centred.
@@ -127,6 +129,8 @@ extension PaletteScreen {
     func isPrimaryActionEnabled(at selection: Int) -> Bool { true }
     func hasActions(at selection: Int) -> Bool { true }
     var hidesSearchField: Bool { false }
+    /// The title a tool screen docks where the search field sits; nil keeps the field merely hidden.
+    var toolTitle: String? { nil }
     var actsWithoutRows: Bool { false }
     var landingSelection: Int { 0 }
     func ownsVerticalKeys(at selection: Int) -> Bool { false }

@@ -40,6 +40,10 @@ struct IconRequest<Key: Hashable>: Hashable {
 struct SymbolTint: Hashable, Sendable {
     let key: String
     let color: NSColor
+
+    /// The stock calendar's red, so the web calendar reads as 日历 at tile size; the tint lives
+    /// here because model code cannot name an NSColor itself.
+    static let calendarRed = SymbolTint(key: "webCalendar", color: .systemRed)
 }
 
 enum SystemSymbolName {
@@ -58,6 +62,8 @@ enum EntryIcon: Hashable, Sendable {
     case artwork(path: String, extent: CGFloat)
     /// A declared type's icon, for a bundle whose own file icon is a placeholder.
     case contentType(String)
+    /// A fixed bundle's own icon, for a row that acts through that app rather than being it.
+    case bundle(path: String)
 }
 
 struct IconSize: Hashable, Sendable {
@@ -369,6 +375,7 @@ enum IconCache {
         case .tintedSymbol(let name, let tint): return symbolIcon(named: name, tint: tint)
         case .artwork(let path, let extent): return artwork(atPath: path, extent: extent)
         case .contentType(let identifier): return contentTypeIcon(identifier)
+        case .bundle(let path): return icon(forFile: path, stamp: 0)
         }
     }
 
@@ -379,6 +386,7 @@ enum IconCache {
         case .tintedSymbol(let name, let tint): return cachedSymbol(named: name, tint: tint)
         case .artwork(let path, let extent): return cachedArtwork(atPath: path, extent: extent)
         case .contentType(let identifier): return cachedContentTypeIcon(identifier)
+        case .bundle(let path): return cached(forFile: path, size: size)
         }
     }
 
@@ -390,6 +398,7 @@ enum IconCache {
         case .artwork(let path, let extent):
             return await loadArtworkAsync(atPath: path, extent: extent)
         case .contentType(let identifier): return await loadContentTypeIconAsync(identifier)
+        case .bundle(let path): return await loadAsync(forFile: path, size: size)
         }
     }
 

@@ -54,7 +54,7 @@ struct ExtensionCommandRef: Sendable, Hashable {
 
 /// Finds and installs extensions, stored in Raycast's own layout so a built one imports as-is.
 enum ExtensionCatalog {
-    /// Keyed by bundle id, so a Debug build never shares installs with a release channel.
+    /// Keyed by bundle id, so installs stay separate per app identity (stable, beta, a fork).
     static func extensionsDirectory() -> URL {
         supportDirectory().appendingPathComponent("extensions", isDirectory: true)
     }

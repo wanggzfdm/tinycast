@@ -114,7 +114,6 @@ struct SettingsFileTest {
             .autoSwitchInputSource: .null,
             .searchScopes: .array(["/Applications", "~/Applications"]),
             .showInMenuBar: true,
-            .automaticallyCheckForUpdates: false,
             .escapeKeyBehavior: "say \"hi\"\\ / é\n\t\u{01}",
             .fileSearchIgnorePatterns: .array([]),
             .popToRootTimeout: 5,
@@ -124,7 +123,6 @@ struct SettingsFileTest {
             {
               "general": {
                 "showInMenuBar": true,
-                "automaticallyCheckForUpdates": false,
                 "popToRootSeconds": 5,
                 "escapeKeyBehavior": "say \\"hi\\"\\\\ / é\\n\\t\\u0001",
                 "autoSwitchInputSource": null

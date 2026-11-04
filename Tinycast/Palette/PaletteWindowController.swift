@@ -100,6 +100,12 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         }
     }
 
+    /// Re-apply the panel's frame for the current mode, after a push that changed its size needs.
+    func reposition() {
+        guard let panel else { return }
+        positionPanel(panel, collapsed: core.paletteCoordinator.paletteIsCollapsed)
+    }
+
     // Isolated so teardown may touch the main-actor monitor; the block is already weak.
     isolated deinit {
         if let pasteMonitor { NSEvent.removeMonitor(pasteMonitor) }
@@ -485,10 +491,14 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     private func positionPanel(_ panel: NSPanel, collapsed: Bool) {
         guard let anchor = resolveAnchor() else { return }
         let size = metrics.size
-        let height = collapsed ? size.compactHeight : size.panelHeight
+        // The JSON tool's editor and the web tool's page need the wide plane a compact
+        // search panel cannot give them.
+        let isWideTool = core.palette.mode == .jsonTool || core.palette.mode == .webTool
+        let width = isWideTool ? 900 : size.panelWidth
+        let height = collapsed ? size.compactHeight : (isWideTool ? 680 : size.panelHeight)
         renderingOutset = collapsed ? Theme.Size.paletteGlassOutset : 0
         let frame = PalettePlacement.frame(
-            at: anchor, size: CGSize(width: size.panelWidth, height: height), outset: renderingOutset)
+            at: anchor, size: CGSize(width: width, height: height), outset: renderingOutset)
         panel.setFrame(frame, display: true)
     }
 

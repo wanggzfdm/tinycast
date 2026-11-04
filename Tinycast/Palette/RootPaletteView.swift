@@ -130,6 +130,11 @@ struct RootPaletteView: View {
             return CalculatorHistoryScreen(
                 history: calcHistory, currencyRates: currencyRates, core: core, vm: vm,
                 openActions: openActions)
+        case .jsonTool:
+            return JSONToolScreen(
+                coordinator: core.jsonToolCoordinator, initialText: vm.jsonToolText, vm: vm)
+        case .webTool:
+            return WebToolScreen(coordinator: core.webToolCoordinator, vm: vm)
         case .extensionCommand:
             return ExtensionCommandScreen(
                 screen: extensionScreen, extensions: extensions, vm: vm, openActions: openActions)
@@ -170,6 +175,16 @@ struct RootPaletteView: View {
     // MARK: - Popover menu content
 
     /// The clipboard type filter's rows; activating one is the only way the filter changes.
+    /// The tool pill menu: one entry detaches the running tool to its own resizable window.
+    private var toolMenuContent: PopoverMenuContent {
+        PopoverMenuContent(items: [
+            PopoverMenuItem(
+                title: String(localized: "Detach to Standalone Window"),
+                systemImage: "macwindow.on.rectangle", shortcut: "⌘D"
+            ) { detachTool() }
+        ])
+    }
+
     private var clipboardFilterContent: PopoverMenuContent {
         PopoverMenuContent(
             items: ClipboardFilter.allCases.enumerated().map { index, filter in
@@ -260,6 +275,8 @@ struct RootPaletteView: View {
         case .clipboardFilter:
             return headerMenu(
                 clipboardFilterContent, width: metrics.size.clipboardFilterMenuWidth)
+        case .tool:
+            return headerMenu(toolMenuContent, width: metrics.size.menuWidth, searchable: false)
         case .fileSearchFilter:
             return headerMenu(fileSearchFilterContent, width: metrics.size.fileSearchFilterMenuWidth)
         case .emojiCategory:
@@ -394,7 +411,8 @@ struct RootPaletteView: View {
     /// Split from `body` for the same reason `keyHandlers` is: one chain cannot carry them all.
     @ViewBuilder
     private func stateObservers(_ content: some View) -> some View {
-        emojiObservers(content)
+        menuObservers(
+            emojiObservers(content)
             // Every show bumps focusToken so the search field refocuses.
             .onChange(of: vm.focusToken) {
                 resetCompactSelection()
@@ -480,6 +498,12 @@ struct RootPaletteView: View {
                 // Next turn, past the refocus that selects all, so typing extends the answer.
                 Task { @MainActor in (hostWindow as? PalettePanel)?.moveFieldEditorCaretToEnd() }
             }
+        )
+    }
+
+    /// Split from `stateObservers`: one chain of this length is past what the type-checker will infer.
+    private func menuObservers(_ content: some View) -> some View {
+        content
             .onChange(of: vm.favoriteSlotToken) {
                 if let index = vm.favoriteSlotIndex { performShortcut(.favoriteSlot(index)) }
             }
@@ -657,6 +681,20 @@ struct RootPaletteView: View {
                 toggleActions()
                 return .handled
             }
+            .onKeyPress(phases: .down) { press in
+                // ⌘D detaches a tool to its own window, the pill menu's shortcut.
+                guard ASCIIKeyboardLayout.matches(press.key, character: "d"),
+                    ToolDetachShortcut.matches(
+                        command: press.modifiers.contains(.command),
+                        shift: press.modifiers.contains(.shift),
+                        option: press.modifiers.contains(.option),
+                        control: press.modifiers.contains(.control),
+                        showsToolChrome: showsToolChrome, isControlListOpen: vm.isControlListOpen,
+                        isCollapsed: isCollapsed)
+                else { return .ignored }
+                detachTool()
+                return .handled
+            }
             // The screen answers row chords; a bare backspace is intercepted in `sendEvent`.
             .onKeyPress(phases: .down) { press in
                 let isDeleteKey = press.key == .delete || press.key == .deleteForward
@@ -770,7 +808,8 @@ struct RootPaletteView: View {
             // Matches the list rows and section headers' own indent below.
             headerGutter(width: metrics.spacing.md * 2)
             // Every sub-screen leaves the same way, so the slot reads the same on all of them.
-            if vm.mode != .launcher {
+            // A tool's pill owns its own ✕, so the back chevron would double the affordance.
+            if vm.mode != .launcher, !showsToolChrome {
                 HeaderBackButton(help: backHelp, action: goBack)
             } else {
                 Image(systemName: vm.mode.systemImage)
@@ -789,6 +828,12 @@ struct RootPaletteView: View {
                 accessory.view
                 // Given room last: at the default priority it would split it with the field.
                 Spacer(minLength: 0).layoutPriority(-1)
+            }
+            if showsToolChrome {
+                headerGutter(width: metrics.spacing.md)
+                HeaderMenuButton(
+                    title: "", systemImage: "ellipsis", isOpen: openMenu == .tool,
+                    help: String(localized: "Tool Menu"), action: toggleToolMenu)
             }
             if tabOpensChat {
                 headerGutter(width: metrics.spacing.md)
@@ -845,7 +890,7 @@ struct RootPaletteView: View {
         // Identical metrics in both states, so typing can't move the search bar.
         .frame(height: metrics.size.headerHeight)
         .padding(.top, metrics.size.headerPadding)
-        .padding(.bottom, isCollapsed ? metrics.size.headerPadding : 0)
+        .padding(.bottom, isCollapsed || showsToolChrome ? metrics.size.headerPadding : 0)
         .frame(maxWidth: .infinity)
     }
 
@@ -886,14 +931,25 @@ struct RootPaletteView: View {
 
     private var hidesSearchField: Bool { !isCollapsed && screen.hidesSearchField }
 
+    /// The docked tool pill replaces both the field and the back chevron while a tool owns the panel.
+    private var showsToolChrome: Bool { hidesSearchField && screen.toolTitle != nil }
+
     /// The field, kept mounted and hidden rather than swapped: a branch would tear its editor down.
     private var headerField: some View {
         searchField
             // A ceiling, not a size, so the row squeezes a long query before the strip overruns.
             .frame(minWidth: searchFieldFloor, maxWidth: searchFieldWidth)
+            // Hidden, an empty field collapses to no width; the docked title bar needs the whole row.
+            .frame(maxWidth: hidesSearchField ? .infinity : nil)
             .opacity(hidesSearchField ? 0 : 1)
             .allowsHitTesting(!hidesSearchField)
             .accessibilityHidden(hidesSearchField)
+            // Attached after the hiding wrappers, so the bar stays visible, hittable and read.
+            .overlay {
+                if hidesSearchField, let title = screen.toolTitle {
+                    ToolTitleBar(title: title, onClose: goBack)
+                }
+            }
             // The frame it publishes is where the panel puts an I-beam; hidden, it owns nowhere.
             .onChange(of: hidesSearchField) { _, hidden in
                 if hidden { vm.searchFieldFrame = .zero }
@@ -943,8 +999,18 @@ struct RootPaletteView: View {
             // Fills the row's height, so there's no gap above it for topDragStrip to meet.
             .frame(maxHeight: .infinity)
             .background(alignment: .leading) {
-                // An IME's marked text leaves `query` empty, so the placeholder would overlap it.
-                if vm.query.isEmpty, !vm.isComposing {
+                if let pasted = vm.pastedText, vm.query.isEmpty, !vm.isComposing {
+                    PastedTextChip(text: pasted, missing: CommandCatalog.isMissingPath(pasted)) {
+                        // Clicking the chip adopts the copy as typed text, like ZTools.
+                        vm.rewriteQuery(pasted)
+                        vm.pastedText = nil
+                        searchFocused = true
+                    } onDismiss: {
+                        vm.pastedText = nil
+                    }
+                    .allowsHitTesting(true)
+                } else if vm.query.isEmpty, !vm.isComposing {
+                    // An IME's marked text leaves `query` empty, so the placeholder would overlap it.
                     Text(searchPrompt)
                         .font(metrics.typography.searchField)
                         .foregroundStyle(Theme.Colors.textTertiary)
@@ -973,6 +1039,15 @@ struct RootPaletteView: View {
                 // A hidden field takes no caret, so it claims no I-beam region either.
                 vm.searchFieldFrame = hidesSearchField ? .zero : $0
             }
+            .modifier(
+                PasteToChipInterceptor(
+                    state: { (vm.query, vm.isComposing) },
+                    ownsWindow: { $0 === hostWindow },
+                    adopt: { text in
+                        vm.pastedText = text
+                        searchFocused = true
+                    })
+            )
     }
 
     /// The Uninstall screen's primary action is destructive, so its pill isn't white.
@@ -1156,12 +1231,16 @@ struct RootPaletteView: View {
 
     /// Every header menu states its own width, so resizing one never moves another.
     private func headerMenu(
-        _ popover: PopoverMenuContent, width: CGFloat, extraRowsHeight: CGFloat = 0
+        _ popover: PopoverMenuContent, width: CGFloat, extraRowsHeight: CGFloat = 0,
+        searchable: Bool = true
     ) -> PaletteMenuContent {
         let filtered = popover.matching(ActionMenuSearchQuery(vm.menuQuery))
         return PaletteMenuContent(
             popover: filtered.content, selection: $menuSelection, width: width,
-            search: PopoverMenu.Search(placeholder: String(localized: "Search…"), placement: .top),
+            // A one-row menu has nothing to search; the search field would be the whole panel.
+            search: searchable
+                ? PopoverMenu.Search(placeholder: String(localized: "Search…"), placement: .top)
+                : nil,
             onActivate: activateMenuItem, preferredSelection: filtered.bestMatch,
             extraRowsHeight: extraRowsHeight)
     }
@@ -1277,6 +1356,15 @@ struct RootPaletteView: View {
             toggleActions()
             return true
         }
+        if character == "d", ToolDetachShortcut.matches(
+            command: modifiers.contains(.command), shift: modifiers.contains(.shift),
+            option: modifiers.contains(.option), control: modifiers.contains(.control),
+            showsToolChrome: showsToolChrome, isControlListOpen: vm.isControlListOpen,
+            isCollapsed: isCollapsed)
+        {
+            detachTool()
+            return true
+        }
         if modifiers.contains(.command), character == "p", performFilterAction() { return true }
         if let shortcut = PaletteShortcut.resolve(
             command: modifiers.contains(.command), shift: modifiers.contains(.shift),
@@ -1332,7 +1420,7 @@ struct RootPaletteView: View {
         case .argumentOptions: .belowHeaderTrailing
         case .inputOptions(let corner): corner
         case .clipboardFilter, .fileSearchFilter, .emojiCategory, .aiModel, .aiReasoning,
-            .aiAttachments, .extensionAccessory:
+            .aiAttachments, .extensionAccessory, .tool:
             .belowHeaderTrailing
         case nil: nil
         }
@@ -1406,6 +1494,27 @@ struct RootPaletteView: View {
                 return
             }
             row += delta
+        }
+    }
+
+    private func toggleToolMenu() {
+        if openMenu == .tool { closeMenus() } else { open(.tool, highlighting: 0) }
+    }
+
+    /// ⋮ → 分离到独立窗口：the tool moves out, and the palette returns to the launcher.
+    private func detachTool() {
+        closeMenus()
+        switch vm.mode {
+        case .jsonTool:
+            core.jsonToolCoordinator.showDetached()
+            goBack()
+        case .webTool:
+            // Pop first, then re-parent the web view a runloop later: moving a live WKWebView
+            // between windows inside one layout transaction crashes AppKit's layout pass.
+            let url = core.webToolCoordinator.currentPageURL()
+            goBack()
+            DispatchQueue.main.async { core.webToolCoordinator.show(url: url) }
+        default: break
         }
     }
 
@@ -1538,6 +1647,7 @@ struct RootPaletteView: View {
             return
         }
         if !vm.pop() { core.paletteCoordinator.hidePalette() }
+        core.windowController.reposition()
     }
 
     private func activateSelection() {
@@ -1562,6 +1672,7 @@ private enum OpenMenu: Equatable {
     case inputOptions(MenuPanelCorner)
     case app
     case clipboardFilter
+    case tool
     case fileSearchFilter
     case emojiCategory
     case aiModel
@@ -1634,5 +1745,101 @@ private struct HeaderBackButton: View {
         .onHover { hovered = $0 }
         .animation(.easeOut(duration: Theme.Duration.hover), value: hovered)
         .help(help)
+    }
+}
+
+/// ⌘V into the empty search field lands on a placeholder chip instead of typed text, like ZTools.
+/// A local monitor, not a gesture: the field editor paste command would otherwise win the event.
+private struct PasteToChipInterceptor: ViewModifier {
+    /// Fresh reads, not captured values: the ViewModifier struct is rebuilt every render.
+    let state: () -> (query: String, isComposing: Bool)
+    let ownsWindow: (NSWindow?) -> Bool
+    let adopt: (String) -> Void
+
+    @State private var monitor: Any?
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                guard monitor == nil else { return }
+                monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
+                    interceptPaste(event)
+                }
+            }
+            .onDisappear {
+                if let monitor { NSEvent.removeMonitor(monitor) }
+                monitor = nil
+            }
+    }
+
+    private func interceptPaste(_ event: NSEvent) -> NSEvent? {
+        let modifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        guard modifiers == .command,
+            event.charactersIgnoringModifiers?.lowercased() == "v",
+            // Only our own window's field: settings and extension forms paste normally.
+            ownsWindow(event.window),
+            let editor = event.window?.firstResponder as? NSTextView, editor.isFieldEditor
+        else { return event }
+        let (query, isComposing) = state()
+        // Text being typed or composed stays a normal paste; an empty field becomes a chip.
+        guard query.isEmpty, !isComposing,
+            let text = NSPasteboard.general.string(forType: .string),
+            !text.isEmpty
+        else { return event }
+        adopt(text)
+        return nil
+    }
+}
+
+/// A clipboard copy waiting as a placeholder chip inside the search field: shown instead of
+/// the prompt, clicked to adopt the text as typed, with a small dismiss control on hover.
+private struct PastedTextChip: View {
+    let text: String
+    /// The copy names a file nothing on disk has: say so where the text sits, not with silence.
+    var missing = false
+    let action: () -> Void
+    let onDismiss: () -> Void
+
+    @State private var hovered = false
+    @Environment(\.metrics) private var metrics
+
+    /// Mid-truncation like ZTools: head and tail with an ellipsis, so a long copy stays readable.
+    private var truncated: String {
+        let maxLength = 30
+        guard text.count > maxLength else { return text }
+        let head = text.prefix(15)
+        let tail = text.suffix(10)
+        return "\(head)...\(tail)"
+    }
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.xs) {
+            Image(systemName: hovered ? "xmark.circle.fill" : "doc.on.clipboard")
+                .font(.system(size: 11))
+                .foregroundStyle(hovered ? Theme.Colors.textTertiary : Theme.Colors.textSecondary)
+                .onTapGesture(perform: onDismiss)
+            Text(truncated)
+                .font(metrics.typography.searchField)
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .lineLimit(1)
+            if missing {
+                Text(String(localized: "Path Not Found"))
+                    .font(metrics.typography.searchField)
+                    .foregroundStyle(Theme.Colors.destructive)
+                    .lineLimit(1)
+                    .allowsHitTesting(false)
+            }
+        }
+        .padding(.horizontal, Theme.Spacing.sm)
+        .padding(.vertical, 2)
+        .background(Theme.Colors.cardFill, in: RoundedRectangle(cornerRadius: Theme.Radius.attachmentChip))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.attachmentChip)
+                .strokeBorder(Theme.Colors.cardStroke, lineWidth: 1)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture(perform: action)
+        .onHover { hovered = $0 }
+        .animation(.easeOut(duration: Theme.Duration.hover), value: hovered)
     }
 }

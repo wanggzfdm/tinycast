@@ -81,6 +81,28 @@ final class LauncherCoordinator {
                 AppLauncher.open(app.url)
                 return
             }
+            if id == .openInTerminal {
+                paletteCoordinator.hidePalette(restoreFocus: false)
+                AppLauncher.openInTerminal(app.url.path)
+                return
+            }
+            if id == .revealInFinder {
+                paletteCoordinator.hidePalette(restoreFocus: false)
+                AppLauncher.showInFinder(app.url)
+                return
+            }
+            if id == .openInVisualStudioCode {
+                paletteCoordinator.hidePalette(restoreFocus: false)
+                AppLauncher.openInVisualStudioCode(app.url)
+                return
+            }
+            if id == .jsonFormatter {
+                // Only real JSON rides in; a name search ("json") opens the empty tool.
+                core.palette.jsonToolText = searchQuery.flatMap { JSONTool.isValid($0) ? $0 : nil } ?? ""
+                paletteCoordinator.navigate(to: .jsonTool)
+                windowController.reposition()
+                return
+            }
             runCommand(id)
             return
         }
@@ -199,14 +221,26 @@ final class LauncherCoordinator {
             Task { await core.cameraCoordinator.show() }
         case .define:
             core.dictionaryCoordinator.show()
-        case .openInBrowser, .runShellCommand:
+        case .openInBrowser, .runShellCommand, .openInTerminal, .revealInFinder,
+            .openInVisualStudioCode:
             break  // Query-driven: each runs where the typed text is, never through this funnel.
+        case .jsonFormatter:
+            core.palette.jsonToolText = ""
+            paletteCoordinator.togglePalette(mode: .jsonTool)
         case .joinNextMeeting:
             calendarCoordinator.joinNextMeeting()
         case .copyMeetingLink:
             calendarCoordinator.copyNextMeetingLink()
         case .mySchedule:
             calendarCoordinator.showSchedule()
+        case .webCalendar:
+            // Pushed when the launcher is showing, so Escape pops back to the search field;
+            // from a hidden palette it just prepares the mode for showPalette below.
+            paletteCoordinator.navigate(to: .webTool)
+            windowController.reposition()
+            if !paletteCoordinator.isShowing(.webTool) {
+                paletteCoordinator.showPalette(mode: .webTool)
+            }
         case .openInCalendar:
             calendarCoordinator.openNextMeetingInCalendar()
         case .createEvent:
@@ -257,9 +291,6 @@ final class LauncherCoordinator {
         case .importFromRaycast:
             dismissPalette()
             settingsCoordinator.showBackupSettings()
-        case .checkForUpdates:
-            dismissPalette()
-            core.updateCoordinator.checkForUpdates()
         case .settings:
             dismissPalette()
             settingsCoordinator.showSettings()
