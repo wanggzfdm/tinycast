@@ -20,6 +20,8 @@ struct ExtensionCommandScreen: PaletteScreen {
 
     /// A form owns the whole keyboard: its fields are the text, so the search field steps aside.
     var hidesSearchField: Bool { isForm }
+    /// The running command's own name stands in for the search field while its form owns the keys.
+    var toolTitle: String? { isForm ? extensions.running?.commandName : nil }
 
     var landingSelection: Int {
         extensions.landingSelection(for: vm.query, rowCount: rows.count)

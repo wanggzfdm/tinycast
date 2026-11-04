@@ -18,6 +18,8 @@ struct LauncherSettingsFileTest {
         testWaitingRecords()
         testDeletedWaitingRecord()
         testMovedShortcut()
+        testContentMatches()
+        testMissingPathHint()
 
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)
@@ -186,6 +188,58 @@ struct LauncherSettingsFileTest {
             bundleID: bundleID, kind: kind)
     }
 
+    /// The catalog's query-driven rows: a folder opens Terminal + Finder, a file only Finder.
+    private static func testContentMatches() {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("launcher-catalog-\(UUID().uuidString)")
+        let file = dir.appendingPathComponent("notes.txt")
+        try! FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try! "hello".write(to: file, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let folder = CommandCatalog.contentMatches(for: dir.path)
+        let expectedFolderRows = [CommandID.openInTerminal.rawValue, CommandID.revealInFinder.rawValue]
+            + (CommandCatalog.hasVisualStudioCode ? [CommandID.openInVisualStudioCode.rawValue] : [])
+        check("a folder earns terminal, finder, and installed-editor rows", folder.map(\.id) == expectedFolderRows)
+        check(
+            "the rows draw the apps they act through",
+            folder.first { $0.id == CommandID.openInTerminal.rawValue }?.iconOverride
+                == .bundle(path: "/System/Applications/Utilities/Terminal.app")
+                && folder.first { $0.id == CommandID.revealInFinder.rawValue }?.iconOverride
+                    == .bundle(path: "/System/Library/CoreServices/Finder.app")
+                && (!CommandCatalog.hasVisualStudioCode
+                    || folder.first { $0.id == CommandID.openInVisualStudioCode.rawValue }?.iconOverride
+                        == .bundle(path: "/Applications/Visual Studio Code.app"))
+        )
+        let fileRows = CommandCatalog.contentMatches(for: file.path)
+        let expectedFileRows = [CommandID.revealInFinder.rawValue]
+            + (CommandCatalog.hasVisualStudioCode ? [CommandID.openInVisualStudioCode.rawValue] : [])
+        check("a file earns finder and an installed editor", fileRows.map(\.id) == expectedFileRows)
+        check(
+            "a tilde path expands before matching",
+            CommandCatalog.contentMatches(for: "~").map(\.id) == expectedFolderRows)
+        check("a missing path matches nothing", CommandCatalog.contentMatches(for: "/no/such/path").isEmpty)
+        let json = CommandCatalog.contentMatches(for: #"{"a":1}"#)
+        check("a JSON query still earns the formatter", json.map(\.id) == [CommandID.jsonFormatter.rawValue])
+    }
+
+    /// The chip's missing-path badge: absolute text naming nothing on disk, and nothing else.
+    private static func testMissingPathHint() {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("launcher-catalog-\(UUID().uuidString)")
+        try! FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        check("an existing directory is not missing", !CommandCatalog.isMissingPath(dir.path))
+        check(
+            "a missing leaf under an existing parent is missing",
+            CommandCatalog.isMissingPath(dir.appendingPathComponent("nope.txt").path))
+        check("a relative path is not missing", !CommandCatalog.isMissingPath("Downloads/nope.txt"))
+        check("plain text is not missing", !CommandCatalog.isMissingPath("hello world"))
+        check("the bare root is not missing", !CommandCatalog.isMissingPath("/"))
+        check("surrounding whitespace is trimmed", CommandCatalog.isMissingPath("  /no/such/path \n"))
+    }
+
     private static func check(_ description: String, _ condition: @autoclosure () -> Bool) {
         if condition() {
             print("PASS  \(description)")
@@ -220,6 +274,16 @@ struct LauncherSettingsFileTest {
 }
 
 // In-memory scanning and Carbon keep the shipped bindings and stores safe to test.
+enum EntryIcon: Hashable, Sendable {
+    case bundle(path: String), file(stamp: Int), symbol(String)
+    case tintedSymbol(name: String, tint: SymbolTint)
+}
+
+struct SymbolTint: Hashable, Sendable {
+    let key: String; let color: NSColor
+    static let calendarRed = SymbolTint(key: "webCalendar", color: .systemRed)
+}
+
 struct AppEntry: Sendable {
     enum Kind: String, Sendable { case application, systemSettings, systemAction, command, quickAction }
     let id: String
@@ -230,6 +294,7 @@ struct AppEntry: Sendable {
     var settingsOwner: SettingsTab?
     var subtitle: String?
     var alternateTitles: [String] = []
+    var iconOverride: EntryIcon?
     var preferenceKey: String { bundleID ?? id }
 }
 

@@ -34,11 +34,7 @@ final class DictationWorker: Sendable {
     }
 
     private static var executableName: String {
-        #if DEBUG
-            "Tinycast Dev Dictation"
-        #else
-            "Tinycast Dictation"
-        #endif
+        "Tinycast Dictation"
     }
 
     func transcribe(

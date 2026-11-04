@@ -26,6 +26,8 @@ enum PaletteMode: String, CaseIterable, Identifiable {
     case snippetEditor
     case dictionary
     case extensionCommand
+    case jsonTool
+    case webTool
 
     var id: String { rawValue }
 
@@ -56,6 +58,8 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .snippets, .snippetEditor: return "curlybraces"
         case .dictionary: return "book.closed"
         case .extensionCommand: return "puzzlepiece.extension"
+        case .jsonTool: return "curlybraces"
+        case .webTool: return "globe"
         }
     }
     var placeholder: String {
@@ -85,6 +89,8 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .dictionary: return String(localized: "Look up a word…")
         // Replaced by the command's own `searchBarPlaceholder` whenever it declares one.
         case .extensionCommand: return String(localized: "Search…")
+        case .jsonTool: return String(localized: "JSON Tool")
+        case .webTool: return String(localized: "Web Calendar")
         }
     }
 }

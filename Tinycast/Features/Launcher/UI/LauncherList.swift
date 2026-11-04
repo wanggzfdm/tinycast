@@ -10,6 +10,9 @@ struct LauncherList: View {
     let meetingCount: Int
     let suggestionCount: Int
     let matchCount: Int
+    /// Content tools follow ordinary matches, unless clipboard text explicitly promotes them.
+    var tools: [AppEntry] = []
+    var toolsLead = false
     /// Changes only when the list should scroll, so mouse selection never yanks it.
     let scroll: ScrollIntent
     /// The card at flat index 0, when one leads. At most one ever does.
@@ -130,6 +133,10 @@ struct LauncherList: View {
             rows.append(.header(String(localized: "Suggestions")))
             rows.append(contentsOf: suggestions.map { .app($0) })
         }
+        if toolsLead, !tools.isEmpty {
+            rows.append(.header(String(localized: "工具")))
+            rows.append(contentsOf: tools.map { .app($0) })
+        }
         if !matches.isEmpty {
             rows.append(.header(String(localized: "Results")))
             rows.append(contentsOf: matches.map { .app($0) })
@@ -145,12 +152,58 @@ struct LauncherList: View {
             rows.append(.header(kind.descriptor.sectionTitle.resolved()))
             rows.append(contentsOf: group.map { .app($0) })
         }
+        if !toolsLead, !tools.isEmpty {
+            rows.append(.header(String(localized: "工具")))
+            rows.append(contentsOf: tools.map { .app($0) })
+        }
         // A missing kind would make every later row activate its neighbour: assert instead.
         assert(
             grouped.keys.allSatisfy(kinds.contains),
             "kind missing from the launcher's section order: "
                 + grouped.keys.filter { !kinds.contains($0) }.map(\.rawValue).joined(separator: ", "))
         return rows + fileRows + fallbackRows
+    }
+
+    private var gridColumns: Int { 6 }
+
+    /// A run of adjacent tile rows — apps and entry favorites — renders as one grid; a file
+    /// favorite or any other row stands alone and breaks the run.
+    private enum Block: Identifiable {
+        case single(Row)
+        case grid([AppGridBlock.Tile])
+        var id: String {
+            switch self {
+            case .single(let row): return row.id
+            case .grid(let tiles): return "grid-" + (tiles.first?.id ?? "grid")
+            }
+        }
+    }
+
+    private var blocks: [Block] {
+        var blocks: [Block] = []
+        var run: [AppGridBlock.Tile] = []
+        func flush() {
+            guard !run.isEmpty else { return }
+            blocks.append(.grid(run))
+            run = []
+        }
+        for row in rows {
+            switch row {
+            case .app(let app):
+                run.append(
+                    .init(app: app, slot: nil, activate: { onActivate(app) }, actions: { onActions(app) }))
+            case .favorite(.entry(let entry), let index):
+                run.append(
+                    .init(
+                        app: entry, slot: FavoriteSlots.digit(at: index),
+                        activate: { onActivateFavorite(index) }, actions: { onFavoriteActions(index) }))
+            default:
+                flush()
+                blocks.append(.single(row))
+            }
+        }
+        flush()
+        return blocks
     }
 
     var body: some View {
@@ -162,8 +215,16 @@ struct LauncherList: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 0) {
-                            ForEach(rows) { row in
-                                switch row {
+                            ForEach(blocks) { block in
+                                switch block {
+                                case .grid(let tiles):
+                                    AppGridBlock(
+                                        tiles: tiles, columns: gridColumns,
+                                        selectedRowID: selectedRowID,
+                                        running: { runningApps.isRunning($0) },
+                                        dragFor: { drag(for: $0) })
+                                case .single(let row):
+                                    switch row {
                                 case .header(let title):
                                     SectionHeader(title: title, isFirst: row.id == rows.first?.id)
                                 case .fallbackHeader(let title):
@@ -215,6 +276,7 @@ struct LauncherList: View {
                                     .onTapGesture { fallbacks?.onActivate(index) }
                                     .onRightClick { fallbacks?.onActions(index) }
                                     .selectionFrame(row.id == selectedRowID)
+                                    }
                                 }
                             }
                         }
@@ -378,6 +440,99 @@ private struct AppRow: View {
             RoundedRectangle(cornerRadius: metrics.radius.row, style: .continuous)
                 .fill(fill)
         )
+        .armedHover($hovered)
+    }
+}
+
+/// A run of tile rows laid out side by side; selection stays keyed by the flat row id.
+private struct AppGridBlock: View {
+
+    struct Tile: Identifiable {
+        let app: AppEntry
+        let slot: Character?
+        let activate: () -> Void
+        let actions: () -> Void
+        var id: String { app.id }
+    }
+
+    @Environment(\.metrics) private var metrics
+    let tiles: [Tile]
+    let columns: Int
+    let selectedRowID: String?
+    let running: (AppEntry) -> Bool
+    let dragFor: (AppEntry) -> RowDrag?
+
+    private var tileColumns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: metrics.spacing.xs), count: columns)
+    }
+
+    var body: some View {
+        LazyVGrid(columns: tileColumns, spacing: metrics.spacing.xs) {
+            ForEach(tiles) { tile in
+                AppTile(
+                    app: tile.app, slot: tile.slot,
+                    selected: tile.app.id == selectedRowID,
+                    running: running(tile.app),
+                    drag: dragFor(tile.app),
+                    onActivate: tile.activate,
+                    onActions: tile.actions)
+            }
+        }
+        .padding(.vertical, metrics.spacing.xs)
+    }
+}
+
+private struct AppTile: View {
+
+    @Environment(\.metrics) private var metrics
+    let app: AppEntry
+    let slot: Character?
+    let selected: Bool
+    let running: Bool
+    let drag: RowDrag?
+    let onActivate: () -> Void
+    let onActions: () -> Void
+
+    @Environment(PaletteState.self) private var palette
+    @State private var hovered = false
+
+    private var fill: Color {
+        if selected { return Theme.Colors.selection }
+        if hovered { return Theme.Colors.rowHover }
+        return .clear
+    }
+
+    var body: some View {
+        VStack(spacing: metrics.spacing.xs) {
+            AppIconView(app: app, pointSize: 40)
+                .frame(width: 40, height: 40)
+                .overlay(alignment: .bottom) {
+                    if running {
+                        Circle().fill(.secondary).frame(width: 5, height: 5).offset(y: 1)
+                    }
+                }
+            Text(app.name)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
+            if let slot, palette.commandHeld {
+                HStack(spacing: metrics.spacing.xxs) {
+                    KeyCapChip(text: "⌘", style: .outline)
+                    KeyCapChip(text: String(slot), style: .outline)
+                }
+                .allowsHitTesting(false)
+            }
+        }
+        .padding(.vertical, metrics.spacing.sm)
+        .padding(.horizontal, metrics.spacing.xxs)
+        .background(RoundedRectangle(cornerRadius: metrics.radius.row, style: .continuous).fill(fill))
+        .overlay(
+            RoundedRectangle(cornerRadius: metrics.radius.row, style: .continuous)
+                .strokeBorder(selected ? Theme.Colors.selection : .clear, lineWidth: 1.5))
+        .contentShape(Rectangle())
+        .onRowTap(drag: drag, perform: onActivate)
+        .onRightClick(perform: onActions)
         .armedHover($hovered)
     }
 }

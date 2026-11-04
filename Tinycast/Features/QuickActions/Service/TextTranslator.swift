@@ -26,12 +26,31 @@ enum TextTranslator {
 
     /// `TranslationSession(installedSource:)` needs a language; availability reports only a status.
     static func sourceLanguage(of text: String) -> Locale.Language? {
+        if isAllASCII(text) {
+            // Diacritics are the strong signal for Vietnamese and other Latin languages, so an
+            // all-ASCII text is a coin flip between them; a wrong guess dies on a missing
+            // model, while English always answers — and reads anything the user throws at it.
+            return Locale.Language(identifier: "en")
+        }
         let recognizer = NLLanguageRecognizer()
         recognizer.processString(text)
         guard let dominant = recognizer.dominantLanguage, dominant != .undetermined else {
             return nil
         }
         return Locale.Language(identifier: dominant.rawValue)
+    }
+
+    private static func isAllASCII(_ text: String) -> Bool {
+        text.utf8.allSatisfy { $0 < 128 }
+    }
+
+    /// Auto direction: Chinese text goes to English, everything else goes to Chinese.
+    static func translateAuto(_ text: String) async throws -> String {
+        guard let source = sourceLanguage(of: text) else { throw Failure.undetectableSource }
+        let target = source.languageCode?.identifier == "zh"
+            ? Locale.Language(identifier: "en")
+            : Locale.Language(identifier: "zh-CN")
+        return try await translate(text, to: target)
     }
 
     /// Installed pairs only: a missing language is downloaded in System Settings, never from here.
@@ -105,6 +124,13 @@ enum TextTranslator {
     static func displayName(of language: Locale.Language) -> String {
         Locale.current.localizedString(forIdentifier: language.minimalIdentifier)
             ?? language.minimalIdentifier
+    }
+
+    /// Phonetic dictionaries are keyed by single words, so only a lone English word earns one.
+    static func isEnglishWord(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !trimmed.contains(where: \.isWhitespace) else { return false }
+        return sourceLanguage(of: trimmed)?.languageCode?.identifier == "en"
     }
 
     /// The framework's own list, so the picker cannot offer a pair that only fails at press time.

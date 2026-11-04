@@ -5,7 +5,6 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     // Spelled out, so renaming a case can never rename a key in someone's file.
     case launcherShortcut = "general.launcherShortcut"
     case showInMenuBar = "general.showInMenuBar"
-    case automaticallyCheckForUpdates = "general.automaticallyCheckForUpdates"
     case popToRootTimeout = "general.popToRootSeconds"
     case escapeKeyBehavior = "general.escapeKeyBehavior"
     case autoSwitchInputSource = "general.autoSwitchInputSource"
@@ -101,7 +100,9 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     case clipboardRetention = "clipboard.retentionDays"
     case clipboardDefaultAction = "clipboard.defaultAction"
     case clipboardDisabledApps = "clipboard.disabledApps"
+    case clipboardHistoryLayout = "clipboard.historyLayout"
     case clipboardCommands = "clipboard.commands"
+    case clipboardAutoFillLauncher = "clipboard.autoFillLauncher"
     case emojiSkinTone = "emoji.skinTone"
     case emojiGridColumns = "emoji.gridColumns"
     case emojiCommands = "emoji.commands"

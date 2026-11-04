@@ -51,6 +51,7 @@ final class AppCore {
     let currencyRates = CurrencyRateStore()
     let regionNumberFormat = RegionNumberFormatMonitor()
     let calendarStore = CalendarStore()
+    let reminderStore = ReminderStore()
     let meetingClock = MeetingClock()
     let updateChecker = UpdateCheckStore()
     let supportReminders: SupportReminderStore
@@ -215,6 +216,10 @@ final class AppCore {
         settings: settings, appIndex: appIndex, session: windowSwitch, palette: palette,
         paletteCoordinator: paletteCoordinator, core: self)
     @ObservationIgnored private(set) lazy var cameraCoordinator = CameraCoordinator(core: self)
+    @ObservationIgnored private(set) lazy var jsonToolCoordinator = JSONToolCoordinator(core: self)
+    @ObservationIgnored private(set) lazy var bigBangCoordinator = BigBangCoordinator(core: self)
+    @ObservationIgnored private(set) lazy var webToolCoordinator = WebToolCoordinator(core: self)
+    @ObservationIgnored private(set) lazy var fileCreationCoordinator = FileCreationCoordinator(core: self)
     @ObservationIgnored private(set) lazy var dictionaryCoordinator = DictionaryCoordinator(
         paletteCoordinator: paletteCoordinator)
     @ObservationIgnored private(set) lazy var updateCoordinator = UpdateCoordinator(
@@ -241,8 +246,12 @@ final class AppCore {
         paletteCoordinator: paletteCoordinator, settingsCoordinator: settingsCoordinator,
         core: self)
 
-    @ObservationIgnored private lazy var windowController = PaletteWindowController(core: self)
-    @ObservationIgnored private lazy var messageHUD = MessageHUDController(settings: settings)
+    let phoneticsStore = PhoneticsStore()
+    let speechSpeaker = SpeechSpeaker()
+
+    @ObservationIgnored lazy var windowController = PaletteWindowController(core: self)
+    @ObservationIgnored private lazy var messageHUD = MessageHUDController(
+        settings: settings, phonetics: phoneticsStore, speech: speechSpeaker)
     private(set) var isShowingDialog = false
     /// A link that launched the app can arrive before `start` wires anything; it waits, then runs.
     @ObservationIgnored private var pendingURLs: [URL]? = []
@@ -352,15 +361,10 @@ final class AppCore {
                 default: break
                 }
             }
-            updateCoordinator.applyEnabled()
             calendarCoordinator.applyEnabled()
             Task { await appIndex.refresh() }
             Task { await emojiIndex.load(languages: SystemLanguages.preferred) }
             currencyRates.start()
-            updateChecker.onUpdateAvailable = { [weak self] release in
-                self?.updateCoordinator.presentIfAvailable(release) ?? true
-            }
-            updateCoordinator.applyAutomaticChecking()
             supportReminders.onDue = { [weak self] in self?.supportCoordinator.presentIfDue() }
             supportReminders.start()
 
@@ -482,9 +486,10 @@ final class AppCore {
         if settingsCoordinator.focusExisting() { return }
         if aiChatCoordinator.focusExisting() { return }
         if onboardingCoordinator.focusExisting() { return }
-        if updateCoordinator.focusExisting() { return }
         if supportCoordinator.focusExisting() { return }
         if customCommandCoordinator.focusOutputWindow() { return }
+        if jsonToolCoordinator.focusExisting() { return }
+        if webToolCoordinator.focusExisting() { return }
         paletteCoordinator.showPalette(mode: .launcher, restoreAnyMode: true)
     }
 
@@ -672,9 +677,6 @@ final class AppCore {
     // MARK: - Feature switches
 
     private func observeFeatureSwitches() {
-        track(
-            { _ = $0.automaticallyCheckForUpdates },
-            reproject: { $0.updateCoordinator.applyAutomaticChecking() })
         track(
             {
                 _ = $0.windowManagementEnabled
@@ -998,6 +1000,14 @@ final class AppCore {
         messageHUD.showProgress(message: message, onCancel: onCancel)
     }
 
+    /// A translation result with its source text; tapping it opens Big Bang for word picking.
+    func showTranslation(source: String, translation: String) {
+        messageHUD.showTranslation(
+            source: source, translation: translation,
+            phonetics: phoneticsStore, speech: speechSpeaker,
+            onOpen: { [weak self] in self?.bigBangCoordinator.open(text: source) })
+    }
+
     func hideProgress() {
         messageHUD.dismiss()
     }
@@ -1014,5 +1024,9 @@ final class AppCore {
 
     func editClipboardText(_ text: String) async -> String? {
         await dialogs.editClipboardText(text)
+    }
+
+    func requestFileCreationName(kind: FileCreator.Kind, folder: URL) async -> String? {
+        await dialogs.fileCreationName(kind: kind, folder: folder)
     }
 }

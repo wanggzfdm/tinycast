@@ -116,6 +116,7 @@ run() {
 }
 
 L=Tinycast/Features/Launcher/Model
+S=Tinycast/Features/Launcher/Service
 run slow -O fuzz-test      $L/SearchRelevance.swift $L/ScriptRomanization.swift \
                            $L/LauncherMatch.swift $L/EntryNaming.swift $L/LauncherOrder.swift \
                            $L/LauncherRankingStore.swift $L/LauncherSuggestions.swift
@@ -157,6 +158,7 @@ run launcher-file-test     $L/LauncherFileFormat.swift \
                            Tinycast/Features/Settings/Model/SettingsFileJSON.swift
 run launcher-settings-file-test \
                            $L/LauncherFileFormat.swift $L/CommandID.swift $L/CommandCatalog.swift \
+                           Tinycast/Features/JSON/Model/JSONTool.swift \
                            Tinycast/Features/Launcher/Service/LauncherSettingsFile.swift \
                            Tinycast/Features/Launcher/Service/AliasStore.swift \
                            Tinycast/Features/Launcher/Service/VisibilityStore.swift \
@@ -180,8 +182,105 @@ run launcher-settings-file-test \
                            Tinycast/Features/Snippets/Model/Snippet.swift \
                            Tinycast/Platform/LocalizedResource.swift
 run apple-shortcut-test    Tinycast/Features/AppleShortcuts/Model/*.swift
+run bigbang-test           Tinycast/Features/BigBang/Model/BigBang.swift
+run text-translator-test   Tinycast/Features/QuickActions/Service/TextTranslator.swift
+run phonetics-test         Tinycast/Features/QuickActions/Model/Phonetics.swift \
+                           Tinycast/Features/QuickActions/Service/TextTranslator.swift
+run reminder-draft-test    Tinycast/Features/Reminders/Model/ReminderDraft.swift
+run reminder-content-test  \
+                           $S/AppIndex.swift $S/AliasStore.swift $S/VisibilityStore.swift \
+                           $S/LauncherSettingsFile.swift $S/SettingsPaneScanner.swift \
+                           $S/BundleNameCache.swift $S/FavoritesStore.swift \
+                           Tinycast/Features/FileSearch/Model/FileSearchResult.swift \
+                           Tinycast/Features/Settings/AppSettings.swift \
+                           Tinycast/Features/Settings/AppSettingsKey.swift \
+                           Tinycast/Features/Settings/EscapeKeyBehavior.swift \
+                           Tinycast/Features/Settings/InterfaceSize.swift \
+                           Tinycast/Features/Dictation/Model/DictationMode.swift \
+                           Tinycast/DesignSystem/Theme.swift \
+                           Tinycast/DesignSystem/InterfaceMetrics.swift \
+                           Tinycast/Features/Dictation/Model/DictationDestination.swift \
+                           Tinycast/Features/Dictation/Model/DictationIdleRelease.swift \
+                           Tinycast/Features/Dictation/Model/DictationModel.swift \
+                           Tinycast/Features/Calendar/Model/MeetingSpan.swift \
+                           Tinycast/Features/Settings/AppAppearance.swift \
+                           Tinycast/Features/Settings/AppLanguage.swift \
+                           Tinycast/Features/Calculator/Model/*.swift \
+                           Tinycast/Features/Clipboard/Model/*.swift \
+                           Tinycast/Platform/LaunchAtLogin.swift \
+                           Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
+                           Tinycast/Platform/Images/ImageDerivative.swift \
+                           Tinycast/Features/HotKeys/Service/HotKeyManager.swift \
+                           Tinycast/Features/HotKeys/Service/HotKeyCenter.swift \
+                           Tinycast/Features/HotKeys/Service/ModifierTapMonitor.swift \
+                           Tinycast/Features/HotKeys/Service/ShortcutCaptureSession.swift \
+                           Tinycast/Features/HotKeys/Model/DoubleTapDetector.swift \
+                           Tinycast/Features/HotKeys/Model/ModifierKeyDetector.swift \
+                           Tinycast/Features/HotKeys/Model/HyperKeyEngine.swift \
+                           Tinycast/Platform/HealthTicker.swift \
+                           Tinycast/Features/Launcher/Service/AppLauncher.swift \
+                           Tinycast/Platform/Permissions.swift \
+                           Tinycast/Platform/CalendarAccess.swift \
+                           Tinycast/Platform/CameraAccess.swift \
+                           Tinycast/Features/Settings/SettingsTab.swift \
+                           Tinycast/Features/Settings/Model/*.swift \
+                           Tinycast/Features/HotKeys/Service/HotKeySettingsFile.swift \
+                           Tinycast/Features/HotKeys/Service/KeyShortcut.swift \
+                           Tinycast/Features/HotKeys/Model/HotKeyAction.swift \
+                           Tinycast/Features/HotKeys/Model/HotKeyAction+EntryID.swift \
+                           Tinycast/Features/HotKeys/Model/HotKeyBinding.swift \
+                           Tinycast/Features/HotKeys/Model/HotKeySpelling.swift \
+                           Tinycast/Features/HotKeys/Model/DoubleTapModifier.swift \
+                           Tinycast/Features/HotKeys/Model/ModifierKey.swift \
+                           Tinycast/Features/HotKeys/Model/HyperKey.swift \
+                           Tinycast/Features/HotKeys/Model/HIDKeyMapping.swift \
+                           Tinycast/Platform/ASCIIKeyboardLayout.swift \
+                           Tinycast/Features/QuickActions/Model/BuiltInQuickAction.swift \
+                           Tinycast/Features/QuickActions/Model/CustomQuickAction.swift \
+                           Tinycast/Features/Quicklinks/Model/Quicklink.swift \
+                           Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
+                           Tinycast/Features/SystemActions/Model/SystemAction.swift \
+                           Tinycast/Features/WindowManagement/Model/*.swift \
+                           Tinycast/Features/AppleShortcuts/Model/AppleShortcut.swift \
+                           Tinycast/Features/CustomCommands/Model/CustomCommand.swift \
+                           Tinycast/Features/Snippets/Model/Snippet.swift \
+                           Tinycast/Features/Extensions/Model/ExtensionRefreshState.swift \
+                           Tinycast/Features/Extensions/Model/ExtensionPackageManager.swift \
+                           Tinycast/Features/FileSearch/Model/FileSearchIgnoreList.swift \
+                           Tinycast/Features/FileSearch/Model/FileSearchPolicy.swift \
+                           Tinycast/Features/FileSearch/Model/FileSearchScope.swift \
+                           Tinycast/Features/Dictation/Model/DictationLanguage.swift \
+                           Tinycast/Features/Launcher/Model/*.swift \
+                           Tinycast/Features/JSON/Model/JSONTool.swift \
+                           Tinycast/Platform/LocalizedResource.swift \
+                           Tinycast/Platform/Memo.swift Tinycast/Platform/AppDisplayName.swift \
+                           Tinycast/Platform/BundleLocalization.swift \
+                           Tinycast/Platform/SystemLanguages.swift \
+                           Tinycast/Platform/Images/FileIconStamp.swift \
+                           Tinycast/Platform/Images/IconCache.swift \
+                           Tinycast/Platform/Appearance.swift \
+                           Tinycast/Platform/Signposts.swift \
+                           Tinycast/Platform/NotificationToken.swift
 run calc-test              Tinycast/Features/Calculator/Model/*.swift
 run index calc-performance Tinycast/Features/Calculator/Model/*.swift
+run json-tool-test         Tinycast/Features/JSON/Model/JSONTool.swift \
+                           Tinycast/Features/JSON/Model/JSONKeySearch.swift
+run json-tool-paste-test   Tinycast/Palette/PaletteState.swift \
+                           Tinycast/Palette/PaletteMode.swift \
+                           Tinycast/Palette/HoverArming.swift \
+                           Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           Tinycast/Platform/Images/ImageDerivative.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
+                           Tinycast/Features/FileSearch/Model/FileSearchFilter.swift \
+                           Tinycast/Features/Clipboard/Model/ColorValue.swift \
+                           Tinycast/Features/Clipboard/Model/ColorFormat.swift \
+                           Tinycast/Features/Clipboard/Model/ColorSpaces.swift \
+                           Tinycast/Features/Quicklinks/Model/Quicklink.swift \
+                           Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
+                           Tinycast/Features/CustomCommands/Model/CustomCommand.swift \
+                           Tinycast/Features/JSON/Model/JSONTool.swift
 run calendar-test          Tinycast/Features/Calendar/Model/*.swift \
                            Tinycast/Features/Calendar/UI/EventEditorSession.swift
 run clipboard-test         Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
@@ -201,6 +300,7 @@ run clipboard-coordinator-test Tinycast/Features/Clipboard/UI/ClipboardCoordinat
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
                            Tinycast/Features/CustomCommands/Model/CustomCommand.swift
+run palette-autofill-test Tinycast/Palette/ClipboardAutofillPolicy.swift
 run clipboard-thumbnail-test Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Platform/Images/ImageDerivative.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
@@ -271,7 +371,7 @@ run appearance-test        Tinycast/Platform/Appearance.swift \
 run language-test          Tinycast/Features/Settings/AppLanguage.swift
 run localized-resource-test Tinycast/Platform/LocalizedResource.swift
 run exclusive onboarding-test Tinycast/Features/Onboarding/OnboardingCoordinator.swift \
-                           Tinycast/Windows/AppWindowController.swift \
+                           Tinycast/Windows/AppWindowController.swift Tinycast/Windows/ToolWindowLevel.swift \
                            Tinycast/DesignSystem/Interaction/Motion.swift \
                            Tinycast/Windows/WindowChrome.swift Tinycast/Platform/ActivationPolicy.swift
 run relaunch-test          Tinycast/App/AppDelegate.swift Tinycast/Platform/RelaunchRunner.swift
@@ -332,6 +432,11 @@ run palette-filter-test    Tinycast/Palette/PaletteMode.swift \
 run action-menu-search-test Tinycast/Palette/ActionMenuSearchQuery.swift \
                             Tinycast/Features/Launcher/Model/SearchRelevance.swift
 run palette-shortcut-test  Tinycast/Palette/PaletteShortcut.swift
+run tool-detach-shortcut-test Tinycast/Palette/ToolDetachShortcut.swift
+run tool-window-level-test Tinycast/Windows/ToolWindowLevel.swift
+run file-creation-name-test Tinycast/Features/FileCreation/Model/FileCreationName.swift
+run file-creator-test Tinycast/Features/FileCreation/Service/FileCreator.swift
+run web-tool-load-policy-test Tinycast/Features/WebTool/Model/WebToolLoadPolicy.swift
 run ascii-layout-test      Tinycast/Platform/ASCIIKeyboardLayout.swift
 run palette-tab-test       Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Palette/PaletteTabAction.swift \

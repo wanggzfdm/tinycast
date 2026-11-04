@@ -667,9 +667,6 @@ enum SettingsSearchCatalog {
             pane: .about,
             keywords: ["version", "licence", "license", "credits"]),
         .init(
-            .aboutAbout, "Check for Updates",
-            keywords: ["version", "upgrade", "release"]),
-        .init(
             group: .aboutLinks, "Links",
             keywords: ["github", "source", "issues", "website"]),
         .init(

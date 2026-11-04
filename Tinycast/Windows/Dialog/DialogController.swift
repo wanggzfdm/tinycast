@@ -107,6 +107,20 @@ final class DialogController: NSObject, NSWindowDelegate {
         return state.text
     }
 
+    func fileCreationName(kind: FileCreator.Kind, folder: URL) async -> String? {
+        let state = FileCreationNameState()
+        let title = kind == .file ? String(localized: "创建文件") : String(localized: "创建文件夹")
+        let request = DialogRequest(
+            title: title, message: folder.path, symbol: kind == .file ? "doc" : "folder",
+            actions: [
+                DialogAction(title: String(localized: "创建")),
+                DialogAction(title: String(localized: "Cancel"), role: .cancel)
+            ],
+            defaultIndex: 0, cancelIndex: 1, accessory: .fileCreationName(state))
+        guard await present(request) == 0 else { return nil }
+        return state.name
+    }
+
     private func present(_ request: DialogRequest) async -> Int {
         guard continuation == nil else { return request.cancelIndex }
         return await withCheckedContinuation { continuation in
@@ -116,6 +130,7 @@ final class DialogController: NSObject, NSWindowDelegate {
                 switch request.accessory {
                 case nil, .volume: metrics.size.dialogCompactWidth
                 case .snippetArguments, .clipboardText: metrics.size.dialogWidth
+                case .fileCreationName: metrics.size.dialogCompactWidth
                 }
             let content = hostingView(
                 DialogView(

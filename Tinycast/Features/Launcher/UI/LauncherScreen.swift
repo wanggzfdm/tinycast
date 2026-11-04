@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The root search: favorites, meetings, suggestions, then one section per kind, led by any card.
@@ -18,6 +19,9 @@ struct LauncherScreen: PaletteScreen {
     let scrollToFollow: () -> Void
 
     private let results: [AppEntry]
+    /// Content tools move below ordinary results, except clipboard text promotes them above app grids.
+    private let tools: [AppEntry]
+    private let toolsLead: Bool
     private let calc: CalcResult?
     private let color: ColorValue?
     /// Only the empty query pins favorites — a category shows its sections without one of its own.
@@ -60,13 +64,30 @@ struct LauncherScreen: PaletteScreen {
             ?? appIndex.orderedResults(
                 query: vm.query, visibility: visibility, favorites: favorites, hotKeys: core.hotKeys)
         var results = ordered.entries
-        var matchCount = ordered.matchCount
+        let fileCreationCommands = [CommandID.createFile, .createFolder]
+        // Finder gives these actions a concrete destination, so they stay visible whatever is
+        // typed; their rows follow matched apps, so a real hit still owns Enter. Placed after
+        // favorites are split off, since the index counts favorites from the front of the list.
+        var pendingFileCreation = false
+        if core.fileCreationCoordinator.finderWasFrontmost, pinned == nil {
+            results.removeAll { entry in
+                CommandCatalog.command(for: entry).map(fileCreationCommands.contains) ?? false
+            }
+            pendingFileCreation = true
+        } else {
+            results.removeAll { entry in
+                CommandCatalog.command(for: entry).map(fileCreationCommands.contains) ?? false
+            }
+        }
+        var matchCount = ordered.matchCount + (core.fileCreationCoordinator.finderWasFrontmost ? 2 : 0)
         // A typed web address leads: nothing the index holds answers it better.
+        var browserLeads = false
         if pinned == nil, let browser = CommandCatalog.openInBrowser(for: vm.query),
             visibility.isVisible(browser)
         {
             results.insert(browser, at: 0)
             matchCount += 1
+            browserLeads = true
         }
         // No card over a pinned row: its fields hang off the selection, which must start on it.
         let calc =
@@ -81,13 +102,48 @@ struct LauncherScreen: PaletteScreen {
             entries: Array(results.prefix(ordered.favoriteCount)),
             files: pinsFavorites ? core.fileSearchCoordinator.favoriteFiles : [])
         results.removeFirst(ordered.favoriteCount)
-        let entries =
-            pinnedFavorites.map(Row.init) + results.map(Row.entry) + files.map(Row.file)
-            + fallbacks.map { Row.fallback($0.fallback, $0.entry) }
+        // Path/JSON answers and the clipboard's file: content rows lead the section they join.
+        // Favorites are already split out, so this lands between Suggestions and the matches.
+        if pendingFileCreation {
+            let leadingRows = (browserLeads ? 1 : 0)
+                + (pinsFavorites ? ordered.meetingCount + ordered.suggestionCount : 0)
+            let insertion = LauncherContentPlacement.fileCreationInsertionIndex(
+                in: results, leadingRows: leadingRows)
+            results.insert(contentsOf: fileCreationCommands.map { CommandCatalog.makeEntry($0) }, at: insertion)
+        }
+        var tools: [AppEntry] = []
+        if pinned == nil {
+            let matchQuery = vm.pastedText ?? vm.query
+            var content = CommandCatalog.contentMatches(for: matchQuery, pasted: vm.pastedText != nil)
+            // A copied file has no text to chip, so the empty query is its one chance to lead.
+            if vm.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                let fileEntry = Self.clipboardFileEntry()
+            {
+                content.append(fileEntry)
+            }
+            if LauncherContentPlacement.separatesTools(entries: results) {
+                tools = content
+            } else {
+                results.insert(contentsOf: content, at: (pinsFavorites ? ordered.meetingCount : 0)
+                    + (pinsFavorites ? ordered.suggestionCount : 0))
+                matchCount += content.count
+            }
+        }
+        let toolsLead = LauncherContentPlacement.toolsLead(
+            query: vm.query, pastedText: vm.pastedText)
+        let insertion = (pinsFavorites ? ordered.meetingCount : 0)
+            + (pinsFavorites ? ordered.suggestionCount : 0)
+        let displayedResults = toolsLead
+            ? Array(results.prefix(insertion)) + tools + Array(results.dropFirst(insertion))
+            : results + tools
+        let entries = pinnedFavorites.map(Row.init) + displayedResults.map(Row.entry)
+            + files.map(Row.file) + fallbacks.map { Row.fallback($0.fallback, $0.entry) }
         // At most one of them leads, so the flat index keeps a single-row offset.
         let meeting = pinsFavorites ? meeting : nil
         self.meeting = meeting
         self.results = results
+        self.tools = tools
+        self.toolsLead = toolsLead
         self.calc = calc
         self.files = files
         self.fallbacks = fallbacks
@@ -276,7 +332,8 @@ struct LauncherScreen: PaletteScreen {
         case .meeting(let meeting): core.calendarCoordinator.activateMeeting(id: meeting.id)
         case .entry(let app):
             core.launcherCoordinator.launch(
-                app, searchQuery: vm.query, arguments: core.launcherCoordinator.argumentValues(for: app))
+                app, searchQuery: vm.pastedText ?? vm.query,
+                arguments: core.launcherCoordinator.argumentValues(for: app))
         case .file(let result): core.fileSearchCoordinator.open(result)
         case .fallback(let fallback, _):
             core.fallbackCoordinator.run(fallback, query: vm.query)
@@ -309,6 +366,111 @@ struct LauncherScreen: PaletteScreen {
         guard let app = entry(at: selection), app.canRevealInFinder else { return false }
         core.launcherCoordinator.showInFinder(app)
         return true
+    }
+
+    // MARK: - Grid navigation
+
+    /// The entry sections, in publication order: favorites, meetings, suggestions, results,
+    /// then one group per kind. Each is an independent grid; files and fallbacks stay vertical.
+    private struct EntrySection: Equatable {
+        let start: Int
+        let count: Int
+    }
+
+    private var gridColumns: Int { 6 }
+
+    private var cardOffset: Int { leadCard == nil ? 0 : 1 }
+
+    /// The entry plane the grid navigates: the flat rows, offset by a leading card.
+    private var entrySections: [EntrySection] {
+        var sections: [EntrySection] = []
+        var start = cardOffset
+        func add(_ count: Int) {
+            guard count > 0 else { return }
+            sections.append(EntrySection(start: start, count: count))
+            start += count
+        }
+        add(pinnedFavorites.count)
+        add(meetingCount)
+        add(suggestionCount)
+        if toolsLead { add(tools.count) }
+        add(matchCount)
+        let rest = results.dropFirst(meetingCount + suggestionCount + matchCount)
+        let ordered: [AppEntry.Kind] = [
+            .meeting, .application, .systemSettings, .extensionCommand, .quicklink, .appleShortcut,
+            .snippet, .systemAction, .windowLayout, .windowRoom, .windowCommand, .customCommand,
+            .quickAction, .command
+        ]
+        for kind in ordered {
+            add(rest.filter { $0.kind == kind }.count)
+        }
+        if !toolsLead { add(tools.count) }
+        return sections
+    }
+
+    /// Which entry section a flat selection lands in, and its in-section index; nil for a card,
+    /// a file, or a fallback row, which navigate flat instead of as a grid.
+    private func gridPosition(of selection: Int) -> (section: EntrySection, index: Int)? {
+        for section in entrySections {
+            if selection >= section.start, selection < section.start + section.count {
+                return (section, selection - section.start)
+            }
+        }
+        return nil
+    }
+
+    func move(_ delta: Int, axis: PaletteAxis, from selection: Int) -> Int? {
+        guard let (section, index) = gridPosition(of: selection) else {
+            // Card, file, fallback: step the flat plane, or nil to hand the key to the palette.
+            let count = rows.count
+            guard count > 0 else { return nil }
+            if axis == .horizontal { return nil }
+            return min(max(selection + delta, 0), count - 1)
+        }
+        let columns = gridColumns
+        let count = section.count
+        switch axis {
+        case .horizontal:
+            return section.start + min(max(index + delta, 0), count - 1)
+        case .vertical:
+            if delta > 0 {
+                let next = index + columns
+                // Stay inside the section unless a lower partial row is still below.
+                if next < count { return section.start + next }
+                // A lower partial row in this section: clamp to its last cell.
+                if index / columns < (count - 1) / columns { return section.start + count - 1 }
+                // No more in this section: spill into the next at the same column.
+                let sections = entrySections
+                guard let position = sections.firstIndex(where: { $0 == section }) else { return nil }
+                guard position + 1 < sections.count else { return nil }
+                let nextSection = sections[position + 1]
+                return nextSection.start + min(index % columns, nextSection.count - 1)
+            } else {
+                if index - columns >= 0 { return section.start + (index - columns) }
+                let sections = entrySections
+                guard let position = sections.firstIndex(where: { $0 == section }) else { return nil }
+                guard position > 0 else { return nil }
+                let previous = sections[position - 1]
+                let lastRowStart = ((previous.count - 1) / columns) * columns
+                return previous.start + min(lastRowStart + index % columns, previous.count - 1)
+            }
+        }
+    }
+
+    /// Memoized per pasteboard generation: `init` runs per keystroke, so decoding file URLs on
+    /// every render would read the board far more often than the board changes.
+    @MainActor private static var fileEntryCache: (changeCount: Int, entry: AppEntry?)?
+
+    @MainActor private static func clipboardFileEntry() -> AppEntry? {
+        let board = NSPasteboard.general
+        if let cache = fileEntryCache, cache.changeCount == board.changeCount {
+            return cache.entry
+        }
+        let entry = PasteboardFiles.urls(on: board).first.map {
+            CommandCatalog.makeEntry(.revealInFinder, url: $0, subtitle: $0.path)
+        }
+        fileEntryCache = (board.changeCount, entry)
+        return entry
     }
 
     private func runningApplication(at selection: Int) -> AppEntry? {
@@ -519,6 +681,8 @@ struct LauncherScreen: PaletteScreen {
             meetingCount: meetingCount,
             suggestionCount: suggestionCount,
             matchCount: matchCount,
+            tools: tools,
+            toolsLead: toolsLead,
             scroll: scroll,
             card: leadCard,
             cardSelected: isCardSelected(selection),

@@ -81,6 +81,40 @@ final class LauncherCoordinator {
                 AppLauncher.open(app.url)
                 return
             }
+            if id == .openInTerminal {
+                paletteCoordinator.hidePalette(restoreFocus: false)
+                AppLauncher.openInTerminal(app.url.path)
+                return
+            }
+            if id == .revealInFinder {
+                paletteCoordinator.hidePalette(restoreFocus: false)
+                AppLauncher.showInFinder(app.url)
+                return
+            }
+            if id == .openInVisualStudioCode {
+                paletteCoordinator.hidePalette(restoreFocus: false)
+                AppLauncher.openInVisualStudioCode(app.url)
+                return
+            }
+            if id == .jsonFormatter {
+                // Content rows carry their source on the entry; a generic command opens empty.
+                core.palette.jsonToolText = CommandCatalog.jsonToolText(from: app) ?? ""
+                paletteCoordinator.navigate(to: .jsonTool)
+                windowController.reposition()
+                return
+            }
+            if id == .createReminder {
+                addReminder(from: app)
+                return
+            }
+            if id == .translate, CommandCatalog.translateText(from: app) != nil {
+                translateCarriedText(app)
+                return
+            }
+            if id == .bigBang, CommandCatalog.bigBangText(from: app) != nil {
+                bigBangCarriedText(app)
+                return
+            }
             runCommand(id)
             return
         }
@@ -176,6 +210,8 @@ final class LauncherCoordinator {
             core.quickActionCoordinator.run(.rewrite)
         case .translate:
             core.quickActionCoordinator.run(.translate)
+        case .bigBang:
+            core.quickActionCoordinator.openBigBang()
         case .summarize:
             core.quickActionCoordinator.run(.summarize)
         case .calculatorHistory:
@@ -199,14 +235,31 @@ final class LauncherCoordinator {
             Task { await core.cameraCoordinator.show() }
         case .define:
             core.dictionaryCoordinator.show()
-        case .openInBrowser, .runShellCommand:
+        case .openInBrowser, .runShellCommand, .openInTerminal, .revealInFinder,
+            .openInVisualStudioCode:
             break  // Query-driven: each runs where the typed text is, never through this funnel.
+        case .jsonFormatter:
+            core.palette.jsonToolText = ""
+            paletteCoordinator.togglePalette(mode: .jsonTool)
+        case .createFile:
+            core.fileCreationCoordinator.createFile()
+        case .createFolder:
+            core.fileCreationCoordinator.createFolder()
         case .joinNextMeeting:
             calendarCoordinator.joinNextMeeting()
         case .copyMeetingLink:
             calendarCoordinator.copyNextMeetingLink()
         case .mySchedule:
             calendarCoordinator.showSchedule()
+        case .webCalendar:
+            core.webToolCoordinator.openPanel()
+            // Pushed when the launcher is showing, so Escape pops back to the search field;
+            // from a hidden palette it just prepares the mode for showPalette below.
+            paletteCoordinator.navigate(to: .webTool)
+            windowController.reposition()
+            if !paletteCoordinator.isShowing(.webTool) {
+                paletteCoordinator.showPalette(mode: .webTool)
+            }
         case .openInCalendar:
             calendarCoordinator.openNextMeetingInCalendar()
         case .createEvent:
@@ -257,9 +310,6 @@ final class LauncherCoordinator {
         case .importFromRaycast:
             dismissPalette()
             settingsCoordinator.showBackupSettings()
-        case .checkForUpdates:
-            dismissPalette()
-            core.updateCoordinator.checkForUpdates()
         case .settings:
             dismissPalette()
             settingsCoordinator.showSettings()
@@ -271,6 +321,9 @@ final class LauncherCoordinator {
             core.supportCoordinator.showSupport()
         case .quit:
             NSApp.terminate(nil)
+        case .createReminder:
+            // Only a content row carries text; the generic command needs typed text first.
+            core.showMessage(String(localized: "输入提醒内容后选择「添加提醒」"), tone: .neutral)
         }
     }
 
@@ -329,6 +382,56 @@ final class LauncherCoordinator {
     func copyDeepLink(_ url: URL) {
         paletteCoordinator.hidePalette(restoreFocus: false)
         core.deepLinkCoordinator.copy(url)
+    }
+
+    /// Clipboard text is already the input: the palette steps aside and the window opens on it.
+    private func bigBangCarriedText(_ app: AppEntry) {
+        guard let text = CommandCatalog.bigBangText(from: app) else { return }
+        paletteCoordinator.hidePalette(restoreFocus: false)
+        core.bigBangCoordinator.open(text: text)
+    }
+
+    /// Auto-direction offline translation: 中文 → English, everything else → 中文.
+    private func translateCarriedText(_ app: AppEntry) {
+        guard let text = CommandCatalog.translateText(from: app) else { return }
+        paletteCoordinator.hidePalette(restoreFocus: false)
+        Task {
+            core.showProgress(String(localized: "Translating…"))
+            do {
+                let result = try await TextTranslator.translateAuto(text)
+                core.hideProgress()
+                core.showTranslation(source: text, translation: result)
+            } catch {
+                core.hideProgress()
+                core.showMessage(error.localizedDescription, tone: .neutral)
+            }
+        }
+    }
+
+    /// A content row owns its text, so the reminder is written and the palette steps aside.
+    /// Time phrases parse first: "明天 9 点开会" writes a scheduled reminder titled 开会.
+    private func addReminder(from app: AppEntry) {
+        guard let text = CommandCatalog.reminderTitle(from: app) else { return }
+        let draft = ReminderDraft.parse(text, now: Date())
+        paletteCoordinator.hidePalette(restoreFocus: false)
+        Task {
+            let store = core.reminderStore
+            store.refreshAccess()
+            if store.access != .granted {
+                guard await store.requestAccess() else {
+                    core.showMessage(String(localized: "提醒事项权限被拒绝"), tone: .neutral)
+                    return
+                }
+            }
+            if store.addReminder(title: draft.title, due: draft.due) {
+                let message = draft.due.map { due in
+                    String(localized: "已添加提醒（\(due.formatted(date: .abbreviated, time: .shortened))）")
+                } ?? String(localized: "已添加提醒")
+                core.showMessage(message)
+            } else {
+                core.showMessage(String(localized: "无法添加提醒"), tone: .neutral)
+            }
+        }
     }
 
     /// Focus is never handed back: the relaunch takes it, or the app that refused has it.

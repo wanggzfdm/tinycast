@@ -5,9 +5,15 @@ import SwiftUI
 final class MessageHUDController {
     private let presenter: HUDPresenter
     private let settings: AppSettings
+    private let phonetics: PhoneticsStore
+    private let speech: SpeechSpeaker
 
-    init(settings: AppSettings) {
+    init(
+        settings: AppSettings, phonetics: PhoneticsStore, speech: SpeechSpeaker
+    ) {
         self.settings = settings
+        self.phonetics = phonetics
+        self.speech = speech
         presenter = HUDPresenter(
             anchor: .edgeInset(Theme.Size.hudEdgeOffset),
             dwell: Theme.Duration.messageHUD,
@@ -17,6 +23,19 @@ final class MessageHUDController {
     func show(message: String, tone: DialogTone = .success) {
         presenter.show(
             MessageHUDView(message: message, accessory: .tone(tone)).environment(\.metrics, metrics))
+    }
+
+    /// A translation result with its source text; tapping it opens Big Bang for word picking.
+    func showTranslation(
+        source: String, translation: String, phonetics: PhoneticsStore, speech: SpeechSpeaker,
+        onOpen: @escaping () -> Void
+    ) {
+        presenter.show(
+            TranslationHUDView(
+                source: source, translation: translation,
+                phonetics: phonetics, speech: speech, onOpen: onOpen),
+            dwells: true,
+            interactive: true)
     }
 
     /// Stays up until the work it reports ends and something replaces it, or `dismiss()` runs.

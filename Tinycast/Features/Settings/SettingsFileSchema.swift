@@ -32,7 +32,6 @@ enum SettingsFileSchema {
             return shortcuts.binding(
                 for: key, action: .togglePalette, name: String(localized: "App Launcher"))
         case .showInMenuBar: return bind(settings, \.showInMenuBar)
-        case .automaticallyCheckForUpdates: return bind(settings, \.automaticallyCheckForUpdates)
         case .popToRootTimeout: return bind(settings, \.popToRootTimeout)
         case .escapeKeyBehavior: return bind(settings, \.escapeKeyBehavior)
         case .autoSwitchInputSource: return bind(settings, \.autoSwitchInputSourceID)
@@ -143,6 +142,7 @@ enum SettingsFileSchema {
         case .clipboardRetention: return bind(settings, \.clipboardRetention)
         case .clipboardDefaultAction: return bind(settings, \.clipboardDefaultAction)
         case .clipboardDisabledApps: return bind(settings, \.clipboardDisabledApps)
+        case .clipboardHistoryLayout: return bind(settings, \.clipboardHistoryLayout)
         case .clipboardCommands: return launcher.commandsBinding(for: key, owner: .clipboard)
         case .emojiSkinTone: return bind(settings, \.emojiSkinTone)
         case .emojiGridColumns: return bind(settings, \.emojiGridColumns)
@@ -161,6 +161,7 @@ enum SettingsFileSchema {
         case .hideCurrentEvent: return bind(settings, \.hideCurrentEvent)
         case .calendarCommands: return launcher.commandsBinding(for: key, owner: .calendar)
         case .extensionsShowInLauncher: return bind(settings, \.extensionsShowInLauncher)
+        case .clipboardAutoFillLauncher: return bind(settings, \.clipboardAutoFillLauncher)
         }
     }
 
@@ -183,6 +184,7 @@ extension CalcNumberStyle: SettingsFileRawValue {}
 extension SearchSensitivity: SettingsFileRawValue {}
 extension WindowCycle: SettingsFileRawValue {}
 extension ClipboardDefaultAction: SettingsFileRawValue {}
+extension ClipboardHistoryLayout: SettingsFileRawValue {}
 extension EmojiSkinTone: SettingsFileRawValue {}
 extension EmojiGridColumns: SettingsFileRawValue {}
 extension DictationModel: SettingsFileRawValue {}

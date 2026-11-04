@@ -19,14 +19,9 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     TINYCAST_BUNDLE_IDENTIFIER: com.tinycast.app
     TINYCAST_URL_SCHEME: tinycast
+    DICTATION_EXECUTABLE_NAME: Tinycast Dictation
   configs:
-    Debug:
-      TINYCAST_BUNDLE_IDENTIFIER: com.tinycast.app.dev
-      # Its own scheme too, so a link never lands in whichever channel macOS happens to pick.
-      TINYCAST_URL_SCHEME: tinycast-dev
-      DICTATION_EXECUTABLE_NAME: Tinycast Dev Dictation
     Release:
-      DICTATION_EXECUTABLE_NAME: Tinycast Dictation
       # Release-only: library validation refuses Debug's `.debug.dylib`, whose team never matches.
       ENABLE_HARDENED_RUNTIME: YES
       # Strip the shipped binary (dSYM is still generated first) and drop unused code.
@@ -93,10 +88,6 @@ targets:
         LD_RUNPATH_SEARCH_PATHS:
           - "$(inherited)"
           - "@executable_path/../Frameworks"
-      configs:
-        # Debug is its own channel, so a local build never corrupts the installed app's state.
-        Debug:
-          PRODUCT_NAME: Tinycast Dev
 
   ClipboardTextHelper:
     type: tool

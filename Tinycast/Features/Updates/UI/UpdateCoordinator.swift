@@ -36,18 +36,10 @@ final class UpdateCoordinator {
     var channel: ReleaseChannel { store.channel }
     var runningVersion: String { store.runningVersion?.description ?? String(localized: "unknown") }
 
-    /// A local build has no release stream, so it does not advertise the command either.
-    func applyEnabled() {
-        core.appIndex.setCommandsVisible([.checkForUpdates], store.channel.updatesItself)
-    }
+    /// Updates are removed from this fork; the entry points stay as no-ops so the coordinator still compiles.
+    func applyEnabled() {}
 
-    func applyAutomaticChecking() {
-        if core.settings.automaticallyCheckForUpdates {
-            store.start()
-        } else {
-            store.stop()
-        }
-    }
+    func applyAutomaticChecking() {}
 
     func focusExisting() -> Bool {
         window.focus()
@@ -87,20 +79,8 @@ final class UpdateCoordinator {
         }
     }
 
-    /// The automatic path: `false` answers that it withheld the prompt, so the store re-offers it.
-    func presentIfAvailable(_ release: AvailableRelease) -> Bool {
-        guard core.settings.automaticallyCheckForUpdates else { return false }
-        switch stage {
-        // Already in hand: re-offering would throw away a download or the relaunch it earned.
-        case .installing, .readyToRelaunch:
-            return true
-        case .checking, .upToDate, .localBuild, .available, .blocked, .failed:
-            guard UpdateReadiness.evaluate(core.currentActivity) == nil else { return false }
-            stage = .available(release)
-            present()
-            return true
-        }
-    }
+    /// Updates are removed from this fork; the automatic prompt path is disabled.
+    func presentIfAvailable(_ release: AvailableRelease) -> Bool { false }
 
     // MARK: - Actions
 

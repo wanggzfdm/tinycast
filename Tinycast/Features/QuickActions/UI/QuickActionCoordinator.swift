@@ -205,6 +205,48 @@ final class QuickActionCoordinator {
         panels.dismiss()
     }
 
+    /// Big Bang: the current selection explodes into its word-picker window, no AI panel.
+    func openBigBang() {
+        guard running == nil else { return }
+        let source =
+            paletteCoordinator.isVisible
+            ? InjectionTarget.behindPalette(
+                ownWindow: paletteCoordinator.previousOwnWindow, app: paletteCoordinator.targetApp)
+            : InjectionTarget.current()
+        let target: Target
+        if let editor = source?.ownEditor as? NoteTextView {
+            target = .note(
+                NoteSelection(
+                    editor: editor, document: core.notesCoordinator.editorInput,
+                    range: editor.selectedRange(), text: editor.injectableSelection))
+        } else {
+            target = .external(paletteCoordinator.targetApp)
+        }
+        if paletteCoordinator.isVisible {
+            paletteCoordinator.hidePalette(restoreFocus: source?.ownEditor is NoteTextView)
+        }
+        start { [weak self] in await self?.beginBigBang(target: target) }
+    }
+
+    private func beginBigBang(target: Target) async {
+        let selection: String
+        do {
+            switch target {
+            case .external(let app):
+                selection = try await QuickActionRunner.selection(in: app, using: injector)
+            case .note(let note):
+                selection = try QuickActionRunner.accepted(note.text)
+            }
+        } catch let failure as QuickActionFailure {
+            reportRefusal(failure)
+            return
+        } catch {
+            core.showMessage(error.localizedDescription, tone: .danger)
+            return
+        }
+        core.bigBangCoordinator.open(text: selection)
+    }
+
     /// The generation stops a superseded task from clearing the newer handle as it finishes.
     private func start(_ work: @escaping @MainActor () async -> Void) {
         generation += 1

@@ -30,7 +30,7 @@ open Tinycast.xcodeproj    # then ⌘R
 Or from the command line:
 
 ```sh
-xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Debug build
+xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Release build
 ```
 
 `xcodebuild` uses whatever `xcode-select` points at; if that's the Command Line Tools rather than
@@ -45,36 +45,44 @@ The app target builds and embeds `ClipboardTextHelper` under `Contents/Helpers`,
 Build the app scheme to include it; copying only the main executable omits OCR support. The helper's
 executable name stays fixed even when release builds override the app's product name for a channel.
 
-Dictation similarly embeds its Swift/Core ML helper, named `Tinycast Dev Dictation` in Debug and
-`Tinycast Dictation` in Release, in an accessory `.app` bundle without a bundled icon. Model weights
-download on demand; none are app resources.
+Dictation similarly embeds its Swift/Core ML helper, named `Tinycast Dictation`, in an accessory
+`.app` bundle without a bundled icon. Model weights download on demand; none are app resources.
 
-### The dev channel
+### Install to /Applications
 
-Debug builds are a separate channel: **`Tinycast Dev.app`**, bundle id `com.tinycast.app.dev`. Every
-persisted thing is keyed by bundle id — `~/Library/Preferences/<id>.plist` (settings and hotkey
-bindings), `~/Library/Application Support/<id>/` (the onboarding marker, Notes, snippets, quicklinks,
+There is one channel: every build is the release app — **`Tinycast.app`**, bundle id
+`com.tinycast.app` — so a local build and an installed copy share all persisted state. Everything is
+keyed by bundle id — `~/Library/Preferences/<id>.plist` (settings and hotkey bindings),
+`~/Library/Application Support/<id>/` (the onboarding marker, Notes, snippets, quicklinks,
 clipboard history, calculator history, launch ranking and frequent emoji; Notes and snippets unless
-a folder is chosen),
-`~/Library/Caches/<id>/` (exchange rates, the update check, staged downloads), the opt-in
-`~/.config/tinycast-dev/settings.json` (`tinycast` on stable), the `tinycast-dev://` link scheme
-(`tinycast://` on stable), the `SMAppService`
-login item, and the Accessibility / Input Monitoring (TCC) grants — so a local build can neither read
-nor clobber an installed app's state, and both run side by side.
+a folder is chosen), `~/Library/Caches/<id>/` (exchange rates, the update check, staged downloads),
+the opt-in `~/.config/tinycast/settings.json`, the `tinycast://` link scheme, the `SMAppService`
+login item, and the Accessibility / Input Monitoring (TCC) grants.
+
+In VS Code the **Install to /Applications** task builds and swaps the installed copy. From the
+command line:
+
+```sh
+xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Release \
+    -derivedDataPath build/DerivedData build
+killall Tinycast 2>/dev/null
+rm -rf /Applications/Tinycast.app
+ditto build/DerivedData/Build/Products/Release/Tinycast.app /Applications/Tinycast.app
+```
+
+Because build and installed copy share one identity:
+
+- Run **one of them at a time**. Both are menu-bar apps; whichever launched first owns the login
+  item and the global hotkeys, and the second one's registrations silently lose.
+- The fixed build path and the `Tinycast Self-Signed` identity keep the TCC grant alive across
+  rebuilds and reinstalls.
+- The Hyper Key's Caps Lock remap lives on the keyboards, which are **shared, not per-bundle**:
+  enable Hyper in one running copy at a time so their keyboard owners do not compete. An identical
+  mapping already installed by another build is left unowned.
 
 **What earns a place in Caches is refetchable, and nothing else.** Anything the user would notice the
 loss of goes in Application Support: `~/Library/Caches` is excluded from Time Machine and the system
 reclaims it under disk pressure without saying so.
-
-Consequences worth knowing:
-
-- The dev build asks for Accessibility on its own the first time, and starts with **no** hotkeys bound
-  and onboarding unseen. Grant and bind once; it persists across rebuilds, because the fixed build path
-  and the `Tinycast Self-Signed` identity keep the TCC grant alive.
-- Don't bind the same global hotkey in both — whichever registered first wins.
-- The Hyper Key's Caps Lock remap lives on the keyboards, which are **shared, not per-bundle**:
-  enable Hyper in one build at a time so their keyboard owners do not compete. An identical mapping
-  already installed by another build is left unowned.
 
 ## Editor
 
@@ -87,14 +95,14 @@ and the flag database:
 
 ```sh
 brew install xcode-build-server
-xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Debug \
+xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Release \
     -derivedDataPath build/DerivedData build 2>&1 | tee /tmp/tinycast-build.log
 ./Scripts/sync-lsp.sh /tmp/tinycast-build.log
 ```
 
 Both files are git-ignored because they embed absolute paths, and `sourcekit-lsp` looks for
 `buildServer.json` at the workspace root by name, so it cannot live in a subfolder. After this the
-**Build Tinycast.app (debug)** task (⌘⇧B) and **F5** re-run the script on every build, so new and
+**Build Tinycast.app** task (⌘⇧B) and **F5** re-run the script on every build, so new and
 renamed files keep resolving.
 
 **Do not run `xcode-build-server config`.** It writes `kind: xcode`, and in that mode the server ignores
@@ -155,7 +163,7 @@ does — so run this after changing UI text, then translate what it added (Xcode
 the JSON directly). A string whose source changed leaves its old entry stale; delete it. The rules for
 writing localizable code are in [standards.md](standards.md#localization).
 
-To see a language without changing the setting, launch the Debug build with
+To see a language without changing the setting, launch the app with
 `-AppleLanguages '(de)'`; add `-NSDoubleLocalizedStrings YES` to find labels that truncate.
 
 ## Formatting

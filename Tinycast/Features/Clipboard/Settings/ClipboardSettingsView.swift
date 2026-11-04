@@ -41,6 +41,14 @@ struct ClipboardSettingsView: View {
                     SettingsRowTitle(.clipboardHistory, "Default action")
                     Text("↵ does this, and Paste takes its shortcut.")
                 }
+                Picker(selection: $settings.clipboardHistoryLayout) {
+                    ForEach(ClipboardHistoryLayout.allCases) { layout in
+                        Text(layout.title).tag(layout)
+                    }
+                } label: {
+                    SettingsRowTitle(.clipboardHistory, "Layout")
+                    Text("List shows a preview beside rows; Cards fills the panel with a horizontal row.")
+                }
             } header: {
                 SettingsSectionHeader(.clipboardHistory)
             }

@@ -13,6 +13,83 @@ enum AppLauncher {
     static func open(_ url: URL) {
         NSWorkspace.shared.open(url)
     }
+    @MainActor
+    static func openInTerminal(_ path: String) {
+        if let script = terminalOpenScript(for: path) {
+            var errorInfo: NSDictionary?
+            NSAppleScript(source: script)?.executeAndReturnError(&errorInfo)
+        } else {
+            // No supported terminal installed: bare `open` still lands a folder in Finder.
+            open(URL(fileURLWithPath: path))
+        }
+    }
+
+    private static func shellQuoted(_ value: String) -> String {
+        "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
+    /// Prefer a real terminal in this order — iTerm2, Ghostty, then Terminal.app — like ZTools.
+    private static var preferredTerminalApp: String? {
+        let candidates = [
+            "/Applications/iTerm.app", "/Applications/iTerm2.app",
+            "/Applications/Ghostty.app", "/Applications/Utilities/Terminal.app",
+        ]
+        return candidates.first { FileManager.default.fileExists(atPath: $0) }
+    }
+
+    /// The AppleScript that opens `path` in the installed terminal, or nil when none is found.
+    private static func terminalOpenScript(for path: String) -> String? {
+        let quoted = shellQuoted(path)
+        switch preferredTerminalApp {
+        case .some(let app) where app.contains("iTerm"):
+            // A new tab in the front window, or a window when none exists; then cd.
+            return """
+                tell application "iTerm"
+                    activate
+                    if (count of windows) = 0 then
+                        create window with default profile
+                    else
+                        tell current window
+                            create tab with default profile
+                        end tell
+                    end if
+                    tell current session of current window
+                        write text "cd \(quoted)"
+                    end tell
+                end tell
+                """
+        case .some(let app) where app.contains("Ghostty"):
+            // New window config carries the working directory; no shell write needed.
+            return """
+                tell application "Ghostty"
+                    activate
+                    set cfg to new surface configuration
+                    set initial working directory of cfg to "\(path.replacingOccurrences(of: "\"", with: "\\\""))"
+                end tell
+                """
+        case .some:
+            // Terminal.app: a new tab in the front window, or a window when none exists.
+            return """
+                tell application "Terminal"
+                    activate
+                    if (count of windows) is 0 then
+                        do script "cd \(quoted)"
+                    else
+                        do script "cd \(quoted)" in front window
+                    end if
+                end tell
+                """
+        case nil:
+            return nil
+        }
+    }
+
+    @MainActor
+    static func openInVisualStudioCode(_ url: URL) {
+        NSWorkspace.shared.open(
+            [url], withApplicationAt: URL(fileURLWithPath: "/Applications/Visual Studio Code.app"),
+            configuration: NSWorkspace.OpenConfiguration())
+    }
 
     @MainActor
     static func showInFinder(_ url: URL) {
