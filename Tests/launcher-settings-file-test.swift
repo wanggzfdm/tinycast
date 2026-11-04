@@ -202,6 +202,13 @@ struct LauncherSettingsFileTest {
             "a folder earns terminal + finder rows",
             folder.map(\.id)
                 == [CommandID.openInTerminal.rawValue, CommandID.revealInFinder.rawValue])
+        check(
+            "the rows draw the apps they act through",
+            folder.first { $0.id == CommandID.openInTerminal.rawValue }?.iconOverride
+                == .bundle(path: "/System/Applications/Utilities/Terminal.app")
+                && folder.first { $0.id == CommandID.revealInFinder.rawValue }?.iconOverride
+                    == .bundle(path: "/System/Library/CoreServices/Finder.app")
+        )
         let fileRows = CommandCatalog.contentMatches(for: file.path)
         check("a file earns only the finder row", fileRows.map(\.id) == [CommandID.revealInFinder.rawValue])
         check("a missing path matches nothing", CommandCatalog.contentMatches(for: "/no/such/path").isEmpty)
@@ -260,6 +267,8 @@ struct LauncherSettingsFileTest {
 }
 
 // In-memory scanning and Carbon keep the shipped bindings and stores safe to test.
+enum EntryIcon: Hashable, Sendable { case bundle(path: String), file(stamp: Int), symbol(String) }
+
 struct AppEntry: Sendable {
     enum Kind: String, Sendable { case application, systemSettings, systemAction, command, quickAction }
     let id: String
@@ -270,6 +279,7 @@ struct AppEntry: Sendable {
     var settingsOwner: SettingsTab?
     var subtitle: String?
     var alternateTitles: [String] = []
+    var iconOverride: EntryIcon?
     var preferenceKey: String { bundleID ?? id }
 }
 

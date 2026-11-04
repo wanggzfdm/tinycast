@@ -71,13 +71,20 @@ enum CommandCatalog {
     }
 
     /// A command's row, built rather than looked up — `all` holds none of the query-driven ones.
+    /// Commands that act through a fixed system app draw that app's real icon, not a glyph.
+    private static let appIcons: [CommandID: String] = [
+        .revealInFinder: "/System/Library/CoreServices/Finder.app",
+        .openInTerminal: "/System/Applications/Utilities/Terminal.app"
+    ]
+
     nonisolated static func makeEntry(
         _ id: CommandID, url: URL? = nil, subtitle: String? = nil
     ) -> AppEntry {
         AppEntry(
             id: id.rawValue, name: id.name, url: url ?? placeholderURL(id), bundleID: nil,
             kind: id.entryKind, settingsOwner: id.owner, subtitle: subtitle,
-            alternateTitles: [id.englishName])
+            alternateTitles: [id.englishName],
+            iconOverride: appIcons[id].map(EntryIcon.bundle(path:)))
     }
 
     nonisolated private static func placeholderURL(_ id: CommandID) -> URL {
