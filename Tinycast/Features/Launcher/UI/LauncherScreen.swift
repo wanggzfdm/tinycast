@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The root search: favorites, meetings, suggestions, then one section per kind, led by any card.
@@ -72,11 +73,18 @@ struct LauncherScreen: PaletteScreen {
         }
         if pinned == nil {
             let matchQuery = vm.pastedText ?? vm.query
-            let content = CommandCatalog.contentMatches(for: matchQuery)
-            for entry in content {
-                results.insert(entry, at: 0)
-                matchCount += 1
+            var content = CommandCatalog.contentMatches(for: matchQuery)
+            // A copied file has no text to chip, so the empty query is its one chance to lead.
+            if vm.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                let fileEntry = Self.clipboardFileEntry()
+            {
+                content.append(fileEntry)
             }
+            // After the pinned slice, not at 0: a leading row would masquerade as a favorite
+            // in the section split and silently drop the last favorite off the grid.
+            let at = ordered.favoriteCount + ordered.meetingCount + ordered.suggestionCount
+            results.insert(contentsOf: content, at: at)
+            matchCount += content.count
         }
         // No card over a pinned row: its fields hang off the selection, which must start on it.
         let calc =
@@ -158,7 +166,7 @@ struct LauncherScreen: PaletteScreen {
         }
     }
 
-// MARK: - Grid navigation
+    // MARK: - Grid navigation
 
     /// The entry sections, in publication order: favorites, meetings, suggestions, results,
     /// then one group per kind. Each is an independent grid; files and fallbacks stay vertical.
@@ -297,6 +305,22 @@ struct LauncherScreen: PaletteScreen {
             if !typed.isEmpty { values[argument.name] = typed }
         }
         return values
+    }
+
+    /// Memoized per pasteboard generation: `init` runs per keystroke, so decoding file URLs on
+    /// every render would read the board far more often than the board changes.
+    @MainActor private static var fileEntryCache: (changeCount: Int, entry: AppEntry?)?
+
+    @MainActor private static func clipboardFileEntry() -> AppEntry? {
+        let board = NSPasteboard.general
+        if let cache = fileEntryCache, cache.changeCount == board.changeCount {
+            return cache.entry
+        }
+        let entry = PasteboardFiles.urls(on: board).first.map {
+            CommandCatalog.makeEntry(.revealInFinder, url: $0, subtitle: $0.path)
+        }
+        fileEntryCache = (board.changeCount, entry)
+        return entry
     }
 
     private func quicklink(for entry: AppEntry) -> Quicklink? {

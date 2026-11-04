@@ -866,7 +866,7 @@ struct RootPaletteView: View {
             .frame(maxHeight: .infinity)
             .background(alignment: .leading) {
                 if let pasted = vm.pastedText, vm.query.isEmpty, !vm.isComposing {
-                    PastedTextChip(text: pasted) {
+                    PastedTextChip(text: pasted, missing: CommandCatalog.isMissingPath(pasted)) {
                         // Clicking the chip adopts the copy as typed text, like ZTools.
                         vm.rewriteQuery(pasted)
                         vm.pastedText = nil
@@ -1624,6 +1624,8 @@ private struct PasteToChipInterceptor: ViewModifier {
 /// the prompt, clicked to adopt the text as typed, with a small dismiss control on hover.
 private struct PastedTextChip: View {
     let text: String
+    /// The copy names a file nothing on disk has: say so where the text sits, not with silence.
+    var missing = false
     let action: () -> Void
     let onDismiss: () -> Void
 
@@ -1649,13 +1651,21 @@ private struct PastedTextChip: View {
                 .font(metrics.typography.searchField)
                 .foregroundStyle(Theme.Colors.textPrimary)
                 .lineLimit(1)
+            if missing {
+                Text(String(localized: "Path Not Found"))
+                    .font(metrics.typography.searchField)
+                    .foregroundStyle(Theme.Colors.destructive)
+                    .lineLimit(1)
+                    .allowsHitTesting(false)
+            }
         }
         .padding(.horizontal, Theme.Spacing.sm)
         .padding(.vertical, 2)
         .background(Theme.Colors.cardFill, in: RoundedRectangle(cornerRadius: Theme.Radius.attachmentChip))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Radius.attachmentChip)
-                .strokeBorder(Theme.Colors.cardStroke, lineWidth: 1))
+                .strokeBorder(Theme.Colors.cardStroke, lineWidth: 1)
+        )
         .contentShape(Rectangle())
         .onTapGesture(perform: action)
         .onHover { hovered = $0 }

@@ -19,6 +19,7 @@ struct LauncherSettingsFileTest {
         testDeletedWaitingRecord()
         testMovedShortcut()
         testContentMatches()
+        testMissingPathHint()
 
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)
@@ -206,6 +207,23 @@ struct LauncherSettingsFileTest {
         check("a missing path matches nothing", CommandCatalog.contentMatches(for: "/no/such/path").isEmpty)
         let json = CommandCatalog.contentMatches(for: #"{"a":1}"#)
         check("a JSON query still earns the formatter", json.map(\.id) == [CommandID.jsonFormatter.rawValue])
+    }
+
+    /// The chip's missing-path badge: absolute text naming nothing on disk, and nothing else.
+    private static func testMissingPathHint() {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("launcher-catalog-\(UUID().uuidString)")
+        try! FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        check("an existing directory is not missing", !CommandCatalog.isMissingPath(dir.path))
+        check(
+            "a missing leaf under an existing parent is missing",
+            CommandCatalog.isMissingPath(dir.appendingPathComponent("nope.txt").path))
+        check("a relative path is not missing", !CommandCatalog.isMissingPath("Downloads/nope.txt"))
+        check("plain text is not missing", !CommandCatalog.isMissingPath("hello world"))
+        check("the bare root is not missing", !CommandCatalog.isMissingPath("/"))
+        check("surrounding whitespace is trimmed", CommandCatalog.isMissingPath("  /no/such/path \n"))
     }
 
     private static func check(_ description: String, _ condition: @autoclosure () -> Bool) {

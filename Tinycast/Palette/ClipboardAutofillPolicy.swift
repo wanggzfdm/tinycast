@@ -1,8 +1,10 @@
 import Foundation
 
 struct ClipboardAutofillPolicy {
-    /// How soon after a copy a launcher open still counts as "right after"; older copies never autofill.
-    static let freshnessInterval: TimeInterval = 1
+    /// How soon after a copy a launcher open still counts as "right after"; older copies never
+    /// autofill. Minutes, not seconds: the chip is a dismissible placeholder, so a stale fill
+    /// costs one glance, while a missing fill costs the whole copy-then-summon flow.
+    static let freshnessInterval: TimeInterval = 300
     /// The 0.5s poll can lag a fresh copy; the caller retries at this cadence within this window.
     static let retryInterval: TimeInterval = 0.05
     static let retryWindow: TimeInterval = 0.6
@@ -31,9 +33,9 @@ struct ClipboardAutofillPolicy {
             changeDates = changeDates.filter { $0.key > changeCount }
         }
         guard date.timeIntervalSince(changedAt) <= Self.freshnessInterval,
-              let text,
-              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              text.count <= ClipboardTextLimit.maxTextLength
+            let text,
+            !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            text.count <= ClipboardTextLimit.maxTextLength
         else { return .missed }
         return .filled(text)
     }

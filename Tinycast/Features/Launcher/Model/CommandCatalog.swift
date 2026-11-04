@@ -62,6 +62,14 @@ enum CommandCatalog {
         return makeEntry(.jsonFormatter, subtitle: "JSON")
     }
 
+    /// Absolute-path text that names nothing on disk. Chip-only feedback: typed text hits this
+    /// mid-keystroke (every prefix of a real path is missing), so it must never row from typing.
+    static func isMissingPath(_ text: String) -> Bool {
+        let path = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return path.hasPrefix("/") && path.count > 1
+            && !FileManager.default.fileExists(atPath: path)
+    }
+
     /// A command's row, built rather than looked up — `all` holds none of the query-driven ones.
     nonisolated static func makeEntry(
         _ id: CommandID, url: URL? = nil, subtitle: String? = nil

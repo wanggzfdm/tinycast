@@ -289,7 +289,6 @@ enum JSONTool {
         }
         let json = try serialize(value, options: [.fragmentsAllowed, .withoutEscapingSlashes])
         let escapedJSON = String(decoding: try JSONSerialization.data(withJSONObject: [json]), as: UTF8.self)
-        let unwrapped = String(escapedJSON.dropFirst().dropLast())
         let expr = expression.trimmingCharacters(in: .whitespacesAndNewlines)
         let escapedExpr = expr
             .replacingOccurrences(of: "\\", with: "\\\\")
