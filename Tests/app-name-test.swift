@@ -252,6 +252,13 @@ struct AppNameTest {
         check(
             "a strings-only app is found by the name in its zh-Hans folder",
             names(weChat, ["zh-Hans-US", "en-US"]) == ["微信", "WeChat"])
+        // The common real-world spelling carries no script: AppleLanguages reads "zh-CN".
+        check(
+            "a region-only zh preference maximizes to the script and reads the zh-Hans folder",
+            names(weChat, ["zh-CN", "en-US"]) == ["微信", "WeChat"])
+        check(
+            "a region-only zh preference never reaches the other script's region",
+            !codes(["zh-CN"]).contains("zh_TW") && !codes(["zh-CN"]).contains("zh_HK"))
 
         // Tips.app ships every language but its own: `en` is the one key Apple's loctables omit.
         let tips = makeLocalizedApp(
