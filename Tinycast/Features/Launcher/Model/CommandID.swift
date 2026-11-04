@@ -18,6 +18,12 @@ enum CommandID: String, CaseIterable, Sendable {
     case switchWindowsBackwards = "command:switch-windows-backwards"
     case openCamera = "command:open-camera"
     case openInBrowser = "command:open-in-browser"
+    case openInTerminal = "command:open-in-terminal"
+    case revealInFinder = "command:reveal-in-finder"
+    case openInVisualStudioCode = "command:open-in-visual-studio-code"
+    case jsonFormatter = "command:json-formatter"
+    case createFile = "command:create-file"
+    case createFolder = "command:create-folder"
     case runShellCommand = "command:run-shell-command"
     case createCustomCommand = "command:create-custom-command"
     case searchCustomCommands = "command:search-custom-commands"
@@ -27,6 +33,7 @@ enum CommandID: String, CaseIterable, Sendable {
     case createEvent = "command:create-event"
     case copyMeetingLink = "command:copy-meeting-link"
     case openInCalendar = "command:open-in-calendar"
+    case webCalendar = "command:web-calendar"
     case showNotes = "command:show-notes"
     case createNote = "command:create-note"
     case searchNotes = "command:search-notes"
@@ -43,7 +50,6 @@ enum CommandID: String, CaseIterable, Sendable {
     case exportSettings = "command:export-settings"
     case importSettings = "command:import-settings"
     case importFromRaycast = "command:import-from-raycast"
-    case checkForUpdates = "command:check-for-updates"
     case settings = "command:settings"
     case about = "command:about"
     case support = "command:support"
@@ -93,6 +99,12 @@ enum CommandID: String, CaseIterable, Sendable {
         case .switchWindowsBackwards: return "Switch Windows Backwards"
         case .openCamera: return "Open Camera"
         case .openInBrowser: return "Open in Browser"
+        case .openInTerminal: return "Open in Terminal"
+        case .revealInFinder: return "Reveal in Finder"
+        case .openInVisualStudioCode: return "用 Visual Studio Code 打开"
+        case .jsonFormatter: return "Open in JSON Tool"
+        case .createFile: return "创建文件"
+        case .createFolder: return "创建文件夹"
         case .runShellCommand: return "Run Shell Command"
         case .createCustomCommand: return "Create Custom Command"
         case .searchCustomCommands: return "Search Custom Commands"
@@ -102,6 +114,7 @@ enum CommandID: String, CaseIterable, Sendable {
         case .createEvent: return "Create Event"
         case .copyMeetingLink: return "Copy Meeting Link"
         case .openInCalendar: return "Open in Calendar"
+        case .webCalendar: return "Web Calendar"
         case .showNotes: return "Show Notes"
         case .createNote: return "Create Note"
         case .searchNotes: return "Search Notes"
@@ -118,7 +131,6 @@ enum CommandID: String, CaseIterable, Sendable {
         case .exportSettings: return "Export Backup"
         case .importSettings: return "Import Backup"
         case .importFromRaycast: return "Import from Raycast"
-        case .checkForUpdates: return "Check for Updates"
         case .settings: return "Tinycast Settings"
         case .about: return "About Tinycast"
         case .support: return "Support Tinycast"
@@ -143,6 +155,12 @@ enum CommandID: String, CaseIterable, Sendable {
         case .switchWindows, .switchWindowsBackwards: return "macwindow.on.rectangle"
         case .openCamera: return "camera"
         case .openInBrowser: return "globe"
+        case .openInTerminal: return "terminal"
+        case .revealInFinder: return "folder"
+        case .openInVisualStudioCode: return "chevron.left.forwardslash.chevron.right"
+        case .jsonFormatter: return "curlybraces"
+        case .createFile: return "doc.badge.plus"
+        case .createFolder: return "folder.badge.plus"
         case .runShellCommand: return "terminal"
         case .createCustomCommand: return "terminal"
         case .searchCustomCommands: return "terminal"
@@ -152,6 +170,7 @@ enum CommandID: String, CaseIterable, Sendable {
         case .createEvent: return "calendar.badge.plus"
         case .copyMeetingLink: return "link"
         case .openInCalendar: return "calendar.badge.clock"
+        case .webCalendar: return "globe"
         case .showNotes: return "text.page"
         case .createNote: return "note.text.badge.plus"
         case .searchNotes: return "text.magnifyingglass"
@@ -168,7 +187,6 @@ enum CommandID: String, CaseIterable, Sendable {
         case .exportSettings: return "square.and.arrow.up"
         case .importSettings: return "square.and.arrow.down"
         case .importFromRaycast: return "arrow.down.doc"
-        case .checkForUpdates: return "arrow.down.circle"
         case .settings: return "gearshape"
         case .about: return "info.circle"
         case .support: return "heart"
@@ -219,7 +237,8 @@ enum CommandID: String, CaseIterable, Sendable {
 
     /// Query-driven: the typed text is their input, so they are built where offered, never listed.
     var isQueryDriven: Bool {
-        self == .openInBrowser || self == .runShellCommand
+        self == .openInBrowser || self == .runShellCommand || self == .openInTerminal
+            || self == .revealInFinder || self == .openInVisualStudioCode
     }
 
     /// A chord carries no query, and none should be able to terminate the app outright.

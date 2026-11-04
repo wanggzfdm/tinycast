@@ -25,6 +25,13 @@ struct HyperKeyEngine: Sendable {
     private var downAt: TimeInterval?
     private var used = false
 
+    /// Xcode 27's toolchain keeps a private member from demoting the memberwise init; Xcode 26
+    /// still needs it spelled out, so this init is what keeps one source compiling on both.
+    init(route: HyperKeyRoute? = nil, includesShift: Bool = true) {
+        self.route = route
+        self.includesShift = includesShift
+    }
+
     private enum DeviceFlags {
         static let leftControlOptionCommand: UInt64 = 0x29
         static let leftShift: UInt64 = 0x2

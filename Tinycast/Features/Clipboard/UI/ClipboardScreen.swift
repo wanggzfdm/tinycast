@@ -30,6 +30,17 @@ struct ClipboardScreen: PaletteScreen {
             item: item, core: core, store: store, target: vm.pasteTarget)
     }
 
+    /// Cards mode: ←/→ step through the row; list mode keeps the palette's default.
+    func move(_ delta: Int, axis: PaletteAxis, from selection: Int) -> Int? {
+        guard core.settings.clipboardHistoryLayout == .cards, axis == .horizontal else {
+            return nil
+        }
+        let rows = rows
+        let target = selection + delta
+        guard rows.indices.contains(target) else { return selection }
+        return target
+    }
+
     func activate(at selection: Int) {
         guard let item = item(at: selection) else { return }
         core.clipboardCoordinator.activate(item)
@@ -135,6 +146,18 @@ struct ClipboardScreen: PaletteScreen {
         if rows.isEmpty {
             // Names the filter, so one hiding every entry doesn't read as an empty history.
             EmptyResults(text: vm.clipboardFilter.emptyMessage)
+        } else if core.settings.clipboardHistoryLayout == .cards {
+            ClipboardCardsView(
+                results: rows,
+                selectedID: item(at: selection)?.id,
+                onSelect: { item in vm.selection = rows.firstIndex(of: item) ?? 0 },
+                onActivate: { activate(at: vm.selection) },
+                onActions: { item in
+                    if let index = rows.firstIndex(of: item) { vm.selection = index }
+                    openActions()
+                },
+                onDragPayload: { core.clipboardCoordinator.dragPayload(for: $0) },
+                onDragDropped: { core.paletteCoordinator.dragLanded() })
         } else {
             let selected = item(at: selection)
             HStack(spacing: 0) {

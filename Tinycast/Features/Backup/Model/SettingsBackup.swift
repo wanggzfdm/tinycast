@@ -23,6 +23,8 @@ struct SettingsBackup: Codable {
         var clipboardEnabled: Bool?
         var clipboardRetentionDays: Int?
         var clipboardDefaultAction: String?
+        var clipboardHistoryLayout: String?
+        var clipboardAutoFillLauncher: Bool?
         var clipboardDisabledApps: [String]?
         var launchAtLogin: Bool?
         var hyperKey: String?
@@ -32,7 +34,6 @@ struct SettingsBackup: Codable {
         var emojiSkinTone: String?
         var emojiGridColumns: Int?
         var showInMenuBar: Bool?
-        var automaticallyCheckForUpdates: Bool?
         var popToRootSeconds: Int?
         var escapeKeyBehavior: String?
         var appearance: String?
@@ -139,6 +140,8 @@ extension SettingsBackup {
             clipboardEnabled: s.clipboardEnabled,
             clipboardRetentionDays: s.clipboardRetention.rawValue,
             clipboardDefaultAction: s.clipboardDefaultAction.rawValue,
+            clipboardHistoryLayout: s.clipboardHistoryLayout.rawValue,
+            clipboardAutoFillLauncher: s.clipboardAutoFillLauncher,
             clipboardDisabledApps: s.clipboardDisabledApps,
             launchAtLogin: s.launchAtLogin,
             hyperKey: s.hyperKey.rawValue,
@@ -148,7 +151,6 @@ extension SettingsBackup {
             emojiSkinTone: s.emojiSkinTone.rawValue,
             emojiGridColumns: s.emojiGridColumns.rawValue,
             showInMenuBar: s.showInMenuBar,
-            automaticallyCheckForUpdates: s.automaticallyCheckForUpdates,
             popToRootSeconds: s.popToRootTimeout.rawValue,
             escapeKeyBehavior: s.escapeKeyBehavior.rawValue,
             appearance: s.appearance.rawValue,
@@ -315,6 +317,10 @@ extension SettingsBackup {
             settings.clipboardEnabled = flag
             count += 1
         }
+        if let flag = s.clipboardAutoFillLauncher {
+            settings.clipboardAutoFillLauncher = flag
+            count += 1
+        }
         if let days = s.clipboardRetentionDays, let retention = ClipboardRetention(rawValue: days) {
             settings.clipboardRetention = retention
             count += 1
@@ -325,6 +331,10 @@ extension SettingsBackup {
         }
         if let raw = s.clipboardDefaultAction, let action = ClipboardDefaultAction(rawValue: raw) {
             settings.clipboardDefaultAction = action
+            count += 1
+        }
+        if let raw = s.clipboardHistoryLayout, let layout = ClipboardHistoryLayout(rawValue: raw) {
+            settings.clipboardHistoryLayout = layout
             count += 1
         }
         if let launch = s.launchAtLogin {
@@ -357,10 +367,6 @@ extension SettingsBackup {
         }
         if let show = s.showInMenuBar {
             settings.showInMenuBar = show
-            count += 1
-        }
-        if let automaticallyCheck = s.automaticallyCheckForUpdates {
-            settings.automaticallyCheckForUpdates = automaticallyCheck
             count += 1
         }
         if let secs = s.popToRootSeconds, let timeout = PopToRootTimeout(rawValue: secs) {

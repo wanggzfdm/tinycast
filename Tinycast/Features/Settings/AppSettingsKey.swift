@@ -7,6 +7,7 @@ enum AppSettingsKey: String, CaseIterable {
     case clipboardTextSearchEnabled = "clipboardTextSearchEnabled"
     case clipboardRetention = "clipboardRetentionDays"
     case clipboardDefaultAction = "clipboardDefaultAction"
+    case clipboardHistoryLayout = "clipboardHistoryLayout"
     case clipboardDisabledApps = "clipboardDisabledApps"
     case hyperKey = "hyperKeyPhysicalKey"
     case hyperKeyIncludesShift = "hyperKeyIncludesShift"
@@ -15,7 +16,6 @@ enum AppSettingsKey: String, CaseIterable {
     case emojiSkinTone = "emojiSkinTone"
     case emojiGridColumns = "emojiGridColumns"
     case showInMenuBar = "showInMenuBar"
-    case automaticallyCheckForUpdates = "automaticallyCheckForUpdates"
     case popToRootTimeout = "popToRootTimeout"
     case escapeKeyBehavior = "escapeKeyBehavior"
     case appearance = "appearance"
@@ -119,4 +119,5 @@ enum AppSettingsKey: String, CaseIterable {
     case supportReminders = "supportReminders"
     case settingsFileEnabled = "settingsFileEnabled"
     case allowedDeepLinks = "allowedDeepLinks"
+    case clipboardAutoFillLauncher = "clipboardAutoFillLauncher"
 }

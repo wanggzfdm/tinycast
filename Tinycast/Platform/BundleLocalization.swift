@@ -26,11 +26,14 @@ enum BundleLocalization {
     }
 
     private static func scriptForms(_ tag: String) -> [String] {
-        let subtags = tag.split(separator: "-")
-        guard subtags.contains(where: { $0.count == 4 && $0.allSatisfy(\.isLetter) })
-        else { return [] }
         let language = Locale.Language(identifier: tag)
-        guard let code = language.languageCode?.identifier, let script = language.script
+        let maximalLocale = Locale.Language(identifier: language.maximalIdentifier)
+        // A region-only tag still keys by script on disk — zh-CN reads zh-Hans.lproj — so the
+        // script is borrowed from the locale's maximum. Only where a script genuinely
+        // disambiguates: a Latin maximum is its language's default, so pt-BR gains nothing but
+        // pt-Latn noise, while zh-CN gains the zh-Hans spelling every Chinese bundle ships.
+        guard maximalLocale.script?.identifier != "Latn", let script = maximalLocale.script,
+            let code = language.languageCode?.identifier
         else { return [] }
         let scriptForm = "\(code)-\(script.identifier)"
         let regionForms = [language.region, maximal(scriptForm).region].compactMap { $0 }

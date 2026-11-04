@@ -32,14 +32,94 @@ enum CommandCatalog {
         return makeEntry(.openInBrowser, url: url, subtitle: String(localized: "URL"))
     }
 
+    static func contentMatches(for query: String) -> [AppEntry] {
+        let path = expandedPath(query)
+        if !path.isEmpty, FileManager.default.fileExists(atPath: path) {
+            var matches: [AppEntry] = []
+            var isDirectory: ObjCBool = false
+            FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
+            // A folder earns both a terminal and a Finder row; a file only Finder.
+            if isDirectory.boolValue, let terminal = openInTerminal(for: path) {
+                matches.append(terminal)
+            }
+            if let finder = revealInFinder(for: path) { matches.append(finder) }
+            if let code = openInVisualStudioCode(for: path) { matches.append(code) }
+            return matches
+        }
+        if let json = jsonFormatter(for: query) { return [json] }
+        return []
+    }
+
+    static var hasVisualStudioCode: Bool {
+        FileManager.default.fileExists(atPath: "/Applications/Visual Studio Code.app")
+    }
+
+    private static func expandedPath(_ query: String) -> String {
+        NSString(string: query.trimmingCharacters(in: .whitespacesAndNewlines))
+            .expandingTildeInPath
+    }
+
+    private static func openInTerminal(for path: String) -> AppEntry? {
+        makeEntry(.openInTerminal, url: URL(fileURLWithPath: path), subtitle: path)
+    }
+
+    private static func revealInFinder(for path: String) -> AppEntry? {
+        makeEntry(.revealInFinder, url: URL(fileURLWithPath: path), subtitle: path)
+    }
+
+    private static func openInVisualStudioCode(for path: String) -> AppEntry? {
+        guard hasVisualStudioCode else { return nil }
+        return makeEntry(.openInVisualStudioCode, url: URL(fileURLWithPath: path), subtitle: path)
+    }
+
+    private static func jsonFormatter(for query: String) -> AppEntry? {
+        guard JSONTool.isValid(query) else { return nil }
+        // The URL carries the exact source: a generic JSON command must never discard it.
+        return makeEntry(.jsonFormatter, url: jsonToolURL(text: query), subtitle: "JSON")
+    }
+
+    static func jsonToolText(from entry: AppEntry) -> String? {
+        guard CommandID(rawValue: entry.id) == .jsonFormatter,
+            let components = URLComponents(url: entry.url, resolvingAgainstBaseURL: false),
+            let encoded = components.queryItems?.first(where: { $0.name == "text" })?.value,
+            let data = Data(base64Encoded: encoded),
+            let text = String(data: data, encoding: .utf8), JSONTool.isValid(text)
+        else { return nil }
+        return text
+    }
+
+    private static func jsonToolURL(text: String) -> URL {
+        var components = URLComponents(string: "tinycast://command/json-formatter")!
+        components.queryItems = [URLQueryItem(name: "text", value: Data(text.utf8).base64EncodedString())]
+        return components.url!
+    }
+
+    /// Absolute-path text that names nothing on disk. Chip-only feedback: typed text hits this
+    /// mid-keystroke (every prefix of a real path is missing), so it must never row from typing.
+    static func isMissingPath(_ text: String) -> Bool {
+        let path = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return path.hasPrefix("/") && path.count > 1
+            && !FileManager.default.fileExists(atPath: path)
+    }
+
     /// A command's row, built rather than looked up — `all` holds none of the query-driven ones.
+    /// Commands that act through a fixed system app draw that app's real icon, not a glyph.
+    private static let appIcons: [CommandID: EntryIcon] = [
+        .revealInFinder: .bundle(path: "/System/Library/CoreServices/Finder.app"),
+        .openInTerminal: .bundle(path: "/System/Applications/Utilities/Terminal.app"),
+        .openInVisualStudioCode: .bundle(path: "/Applications/Visual Studio Code.app"),
+        // Stock-calendar red, so the web calendar reads as 日历 at tile size.
+        .webCalendar: .tintedSymbol(name: "calendar", tint: .calendarRed),
+    ]
+
     nonisolated static func makeEntry(
         _ id: CommandID, url: URL? = nil, subtitle: String? = nil
     ) -> AppEntry {
         AppEntry(
             id: id.rawValue, name: id.name, url: url ?? placeholderURL(id), bundleID: nil,
             kind: id.entryKind, settingsOwner: id.owner, subtitle: subtitle,
-            alternateTitles: [id.englishName])
+            alternateTitles: [id.englishName],
+            iconOverride: appIcons[id])
     }
 
     nonisolated private static func placeholderURL(_ id: CommandID) -> URL {

@@ -152,6 +152,21 @@ enum ClipboardDefaultAction: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// How the history is presented; Cards is the horizontal Clipaste-style layout.
+enum ClipboardHistoryLayout: String, CaseIterable, Identifiable, Sendable {
+    case list
+    case cards
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .list: return String(localized: "List")
+        case .cards: return String(localized: "Cards")
+        }
+    }
+}
+
 /// The ↵ chords a default reorders; ⌥↵ always pastes, so it is not one of them.
 enum ClipboardChord: CaseIterable, Sendable {
     case `return`

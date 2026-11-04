@@ -48,6 +48,7 @@ struct DialogView: View {
                 case .volume(let volume): VolumeSlider(state: volume)
                 case .snippetArguments(let arguments): SnippetArgumentFields(state: arguments)
                 case .clipboardText(let state): ClipboardEditField(state: state)
+                case .fileCreationName(let state): FileCreationNameField(state: state)
                 case nil: EmptyView()
                 }
             }

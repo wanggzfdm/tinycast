@@ -157,6 +157,19 @@ final class AppSettings {
         }
     }
 
+    /// List is the classic split list; Cards is the horizontal Clipaste-style row.
+    var clipboardHistoryLayout: ClipboardHistoryLayout {
+        didSet {
+            defaults.set(
+                clipboardHistoryLayout.rawValue, forKey: Key.clipboardHistoryLayout.rawValue)
+        }
+    }
+
+    /// Fill the launcher's search field with a freshly copied text, once, like utools.
+    var clipboardAutoFillLauncher: Bool {
+        didSet { defaults.set(clipboardAutoFillLauncher, forKey: Key.clipboardAutoFillLauncher.rawValue) }
+    }
+
     var launchAtLogin: Bool {
         didSet { LaunchAtLogin.set(launchAtLogin) }
     }
@@ -166,12 +179,6 @@ final class AppSettings {
         didSet { defaults.set(showInMenuBar, forKey: Key.showInMenuBar.rawValue) }
     }
 
-    var automaticallyCheckForUpdates: Bool {
-        didSet {
-            defaults.set(
-                automaticallyCheckForUpdates, forKey: Key.automaticallyCheckForUpdates.rawValue)
-        }
-    }
 
     /// The physical key remapped to the Hyper chord; `HyperKeyManager` reacts via its observer.
     var hyperKey: HyperKeyPhysicalKey {
@@ -698,13 +705,16 @@ final class AppSettings {
         clipboardDefaultAction =
             defaults.string(forKey: Key.clipboardDefaultAction.rawValue)
             .flatMap(ClipboardDefaultAction.init) ?? .paste
+        clipboardHistoryLayout =
+            defaults.string(forKey: Key.clipboardHistoryLayout.rawValue)
+            .flatMap(ClipboardHistoryLayout.init) ?? .list
+        clipboardAutoFillLauncher =
+            defaults.object(forKey: Key.clipboardAutoFillLauncher.rawValue) == nil
+            || defaults.bool(forKey: Key.clipboardAutoFillLauncher.rawValue)
         launchAtLogin = LaunchAtLogin.isEnabled
         showInMenuBar =
             defaults.object(forKey: Key.showInMenuBar.rawValue) == nil
             || defaults.bool(forKey: Key.showInMenuBar.rawValue)
-        automaticallyCheckForUpdates =
-            defaults.object(forKey: Key.automaticallyCheckForUpdates.rawValue) == nil
-            || defaults.bool(forKey: Key.automaticallyCheckForUpdates.rawValue)
         hyperKey =
             defaults.string(forKey: Key.hyperKey.rawValue).flatMap(HyperKeyPhysicalKey.init)
             ?? .none
@@ -757,7 +767,9 @@ final class AppSettings {
             defaults.object(forKey: Key.openOnCursorScreen.rawValue) == nil
             || defaults.bool(forKey: Key.openOnCursorScreen.rawValue)
         autoSwitchInputSourceID = defaults.string(forKey: Key.autoSwitchInputSource.rawValue)
-        paletteDraggable = defaults.bool(forKey: Key.paletteDraggable.rawValue)
+        paletteDraggable =
+            defaults.object(forKey: Key.paletteDraggable.rawValue) == nil
+            || defaults.bool(forKey: Key.paletteDraggable.rawValue)
         animationsEnabled =
             defaults.object(forKey: Key.animationsEnabled.rawValue) == nil
             || defaults.bool(forKey: Key.animationsEnabled.rawValue)
